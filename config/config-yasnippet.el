@@ -20,7 +20,6 @@
   :defer 1
 
   ;; Define key bindings for fancy snippet navigation.
-  :general (:states 'insert :keymaps 'yas-minor-mode-map "TAB" #'yas-expand)
   :general (:states '(normal insert) :keymaps 'yas-keymap
             "SPC" #'config-yasnippet-space
             "<backspace>" #'config-yasnippet-backspace)
@@ -32,17 +31,21 @@
       '(yaml-mode
         term-mode))
 
+    (defconst config-yasnippet-dont-activate-indentation-hack-modes
+      '(rust-mode))
+
     (defun config-yasnippet-preserve-indentation (f &rest args)
       (let ((col
              (save-excursion
                (back-to-indentation)
                (current-column))))
         (apply f args)
-        (save-excursion
-          (atomic-change-group
-            (goto-char (line-beginning-position))
-            (delete-horizontal-space)
-            (indent-to col)))))
+        (unless (member major-mode config-yasnippet-dont-activate-indentation-hack-modes)
+          (save-excursion
+            (atomic-change-group
+              (goto-char (line-beginning-position))
+              (delete-horizontal-space)
+              (indent-to col))))))
 
     (defun config-yasnippet--maybe-goto-field-end ()
       "Move to the end of the current field if it has been modified."
@@ -135,6 +138,9 @@ Otherwise delete backwards."
 
     (yas-global-mode +1)
 
+    ;; NOTE: yas-maybe-expand is a variable.
+    (general-define-key :states 'insert :keymaps 'yas-minor-mode-map
+      "TAB" yas-maybe-expand)
 
     (add-to-list 'yas-dont-activate-functions
                  (lambda ()
@@ -159,8 +165,7 @@ Otherwise delete backwards."
     (advice-add 'yas--expand-or-prompt-for-template :around #'config-yasnippet-preserve-indentation))
 
   :commands
-  (yas-expand
-   yas-global-mode
+  (yas-global-mode
    yas-insert-snippet
    yas-new-snippet
    yas-next-field
