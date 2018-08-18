@@ -6,7 +6,6 @@
   (require 'use-package))
 
 (require 'cb-major-mode-hydra)
-(require 'config-hydras)
 (require 'f)
 (require 'general)
 (require 'paths)
@@ -31,26 +30,10 @@
 (use-package mu4e
   :straight t
   :commands (mu4e mu4e-compose-new)
-
   :general
-  (:keymaps 'mu4e-main-mode-map :states 'emacs
-   "j" #'mu4e~headers-jump-to-maildir
-   "q" #'bury-buffer)
-  (:keymaps 'mu4e-headers-mode-map :states 'emacs
-   "J" #'mu4e~headers-jump-to-maildir
-   "j" #'mu4e-headers-next
-   "k" #'mu4e-headers-prev)
-  (:keymaps 'mu4e-view-mode-map :states 'motion
-   "F" #'mu4e-compose-forward
-   "J" #'mu4e~view-headers-jump-to-maildir
-   "C-n" #'mu4e-view-headers-next
-   "C-p" #'mu4e-view-headers-prev
-   "RET" #'config-mu4e-view-ret)
-  ;; Evil delete command is super slow for some reason. :(
-  (:keymaps 'mu4e-compose-mode-map :states 'insert "<backspace>" #'backward-delete-char)
-  ;; Declare archive functions.
-  (:keymaps 'mu4e-headers-mode-map "r" #'mu4e-headers-mark-for-read-and-archive)
-  (:keymaps 'mu4e-view-mode-map "r" #'mu4e-view-mark-for-read-and-archive)
+  (:keymaps '(mu4e-headers-mode-map
+              mu4e-view-mode-map)
+   "r" #'mu4e-headers-mark-for-read-and-archive)
 
   :init
   (general-unbind :keymaps 'mu4e-view-mode-map "p")
@@ -120,6 +103,7 @@
      mu4e-compose-format-flowed t
      mu4e-completing-read-function 'completing-read
      mu4e-index-lazy-check t
+     mu4e-confirm-quit nil
 
      mu4e-view-prefer-html t
      mu4e-view-show-images t
@@ -201,12 +185,7 @@
                    :char       "r"
                    :prompt     "rArchive"
                    :show-target (lambda (target) "archive")
-                   :action      cb-mu4e-utils-read-and-archive-action))
-
-    ;; Enable leader key in mu4e maps
-    (config-hydras-insinuate mu4e-headers-mode-map)
-    (config-hydras-insinuate mu4e-view-mode-map)
-    (config-hydras-insinuate mu4e-main-mode-map)))
+                   :action      cb-mu4e-utils-read-and-archive-action))))
 
 (use-package cb-mu4e-utils
   :after mu4e

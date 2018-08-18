@@ -112,6 +112,9 @@
     (hl-line
      ((t :background ,subtle-bg)))
 
+    (eshell-prompt
+     ((t :weight normal :foreground ,orange)))
+
     ;; General font-lock faces.
 
     (font-lock-keyword-face
@@ -180,6 +183,12 @@
      ((t :weight demibold :foreground ,mid-grey)))
 
     ;; Dired
+
+    (dired-async-message
+     ((t :inherit modeline)))
+
+    (dired-async-failures
+     ((t :inherit modeline :foreground ,red)))
 
     (dired-header
      ((t :weight bold)))
@@ -366,6 +375,9 @@
 
     (magit-signature-untrusted
      ((t :foreground ,cyan)))
+
+    (magit-log-author
+     ((t :foreground ,yellow)))
 
     (magit-blame-heading
      ((((background light))

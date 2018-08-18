@@ -97,7 +97,8 @@
                 org-mode
                 indium-repl-mode
                 ;; restclient buffers
-                js-mode))
+                js-mode
+                web-js-snap-mode))
 
     (add-to-list 'display-buffer-alist
                  `(,(rx bos "*Flycheck errors*" eos)
@@ -129,6 +130,20 @@
   (progn
     (setq checkdoc-force-docstrings-flag nil)
     (setq checkdoc-arguments-in-order-flag nil)))
+
+;; flycheck-irony provides C/C++/ObjC checking with the Irony server.
+
+(use-package flycheck-irony
+  :straight t
+  :hook (flycheck-mode . flycheck-irony-setup))
+
+(use-package irony
+  :straight t
+  :hook
+  ((c++-mode . irony-mode)
+   (c-mode . irony-mode)
+   (objc-mode . irony-mode)
+   (irony-mode . irony-cdb-autosetup-compile-options)))
 
 (provide 'config-flycheck)
 

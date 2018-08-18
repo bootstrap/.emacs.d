@@ -21,7 +21,6 @@
 (require 'subr-x)
 
 (autoload 'ansi-color-apply-on-region "ansi-color")
-(autoload 'config-hydras-insinuate "config-hydras")
 (autoload 'thing-at-point-looking-at "thingatpt")
 
 
@@ -210,6 +209,9 @@
 
 ;; Evil breaks cursor settings when combined with hydra.
 (setq-default cursor-in-non-selected-windows nil)
+
+;; Bind a key command to toggle side windows.
+(global-set-key (kbd "C-c TAB") #'window-toggle-side-windows)
 
 
 ;;; Core advice
@@ -436,7 +438,6 @@
   :config
   (progn
     (add-hook 'compilation-filter-hook #'config-basic-settings--colorize-compilation-buffer)
-    (config-hydras-insinuate compilation-mode-map)
 
     ;; Clear default underline text properties applied to compilation highlights.
     (setq compilation-message-face 'cb-compilation-base-face)))
@@ -559,9 +560,7 @@
   (add-hook 'term-mode-hook #'config-basic-settings--shell-hl-line-off))
 
 (use-package calc
-  :commands (quick-calc calc)
-  :config
-  (config-hydras-insinuate calc-mode-map))
+  :commands (quick-calc calc))
 
 (use-package man
   :defer t

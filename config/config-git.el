@@ -5,7 +5,6 @@
 (eval-when-compile
   (require 'use-package))
 
-(require 'config-hydras)
 (require 'paths)
 
 
@@ -47,7 +46,6 @@
           (user-error "Buffer isn't visiting a file"))))))
   :config
   (progn
-    (config-hydras-insinuate magit-mode-map)
     (setq magit-repository-directories
           '(("~/Documents" . 1)
             ("~/Projects" . 1)
@@ -157,6 +155,28 @@
                           #'magit-gpg-insert-revision-gpg
                           #'magit-insert-revision-headers
                           t))
+
+;; pretty-magit adds pretty fontification to magit buffers.
+
+(use-package pretty-magit
+  :after magit
+  :config
+  (progn
+    (pretty-magit-add-leader (rx symbol-start "feature/") ?
+                             '(:foreground "#859900" :v-adjust 0.01 :height 0.9))
+
+    (pretty-magit-add-leader (rx symbol-start "release/") ?
+                             '(:foreground "#cb4b16" :v-adjust 0.01 :height 0.9))
+
+    (defconst config-git-jira-projects '("CAPPS"))
+
+    (pretty-magit-add-leader
+     (rx-to-string `(group (+ space) (or ,@config-git-jira-projects) "-" (+ digit)))
+     nil '(face magit-hash)
+     '(magit-log-mode))
+
+    (pretty-magit-add-leader (rx ":lipstick:") ?
+                             '(:foreground "grey60" :height 1.2))))
 
 (provide 'config-git)
 

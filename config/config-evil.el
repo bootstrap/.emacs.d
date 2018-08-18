@@ -5,7 +5,6 @@
 (eval-when-compile
   (require 'use-package))
 
-(require 'config-hydras)
 (require 'general)
 
 (straight-use-package 'link-hint)
@@ -63,6 +62,8 @@
 
        (t
         (apply fn args)))))
+  :init
+  (setq evil-want-integration nil)
 
   :config
   (progn
@@ -88,17 +89,14 @@
 
     ;; Motion keys for help buffers.
 
-    (evil-define-key 'motion help-mode-map (kbd "<escape>") #'quit-window)
-    (evil-define-key 'motion help-mode-map (kbd "<tab>") #'forward-button)
-    (evil-define-key 'motion help-mode-map (kbd "S-<tab>") #'backward-button)
-    (evil-define-key 'motion help-mode-map (kbd "]") #'help-go-forward)
-    (evil-define-key 'motion help-mode-map (kbd "gf") #'help-go-forward)
-    (evil-define-key 'motion help-mode-map (kbd "^") #'help-go-back)
-    (evil-define-key 'motion help-mode-map (kbd "[") #'help-go-back)
-    (evil-define-key 'motion help-mode-map (kbd "gb") #'help-go-back)
-    (evil-define-key 'motion help-mode-map (kbd "gh") #'help-follow-symbol)
+    (evil-define-key 'motion help-mode-map
+      (kbd "<escape>") #'quit-window
+      (kbd "^") #'help-go-back
+      (kbd "gh") #'help-follow-symbol)
 
     ;; Initial states and keymaps for builtin Emacs packages.
+
+    (evil-set-initial-state 'tabulated-list-mode 'motion)
 
     (evil-set-initial-state 'flycheck-error-list-mode 'motion)
 
@@ -114,50 +112,18 @@
     (with-eval-after-load 'tar-mode
       (evil-add-hjkl-bindings tar-mode-map))
 
-    (evil-set-initial-state 'archive-mode 'emacs)
-    (with-eval-after-load 'arc-mode
-      (evil-add-hjkl-bindings archive-mode-map))
-
     (evil-set-initial-state 'profiler-report-mode 'motion)
     (with-eval-after-load 'profiler
       (evil-define-key 'motion profiler-report-mode-map
-        "j" 'profiler-report-next-entry
-        "k" 'profiler-report-previous-entry
-        "n" 'profiler-report-next-entry
-        "p" 'profiler-report-previous-entry
-
-        (kbd "TAB") 'profiler-report-toggle-entry
-        (kbd "K") 'profiler-report-describe-entry
-        (kbd "RET") 'profiler-report-find-entry
-        (kbd "=") 'profiler-report-compare-profile
-
-        "g r" 'revert-buffer
-        "B" 'profiler-report-render-reversed-calltree
-        "f" 'profiler-report-find-entry))
+        "K" 'profiler-report-describe-entry
+        "B" 'profiler-report-render-reversed-calltree))
 
     (with-eval-after-load 'compile
       ;; h (help) binding interferes with evil navigation.
       (evil-define-key 'motion compilation-mode-map (kbd "h") #'evil-backward-char))
 
-    (evil-set-initial-state 'doc-view-mode 'motion)
-    (with-eval-after-load 'docview
-      (evil-define-key 'motion doc-view-mode-map
-        (kbd "gg") 'doc-view-first-page
-        (kbd "G") 'doc-view-last-page
-        (kbd "j") 'doc-view-next-line-or-next-page
-        (kbd "k") 'doc-view-previous-line-or-previous-page
-        (kbd "h") 'image-backward-hscroll
-        (kbd "l") 'image-forward-hscroll
-        (kbd "n") 'doc-view-next-page
-        (kbd "p") 'doc-view-previous-page
-        (kbd "<down>") 'doc-view-next-line-or-next-page
-        (kbd "<up>") 'doc-view-previous-line-or-previous-page
-        (kbd "<left>") 'image-backward-hscroll
-        (kbd "<right>") 'image-forward-hscroll))
-
-    (with-eval-after-load 'archive-mode
-      ;; KLUDGE: `evil-set-initial-state' doesn't work with archive-mode. Set in a hook instead.
-      (add-hook 'archive-mode-hook 'evil-motion-state)
+    (evil-set-initial-state 'archive-mode 'emacs)
+    (with-eval-after-load 'arc-mode
       (evil-define-key 'motion archive-mode-map
         (kbd "q") 'kill-this-buffer
         (kbd "RET") 'archive-extract
@@ -177,6 +143,7 @@
     (evil-set-initial-state 'haskell-debug-mode 'motion)
 
     (evil-set-initial-state 'ibuffer-mode 'motion)
+    (evil-set-initial-state 'eshell-mode 'insert)
 
     (evil-set-initial-state 'mu4e-main-mode 'emacs)
     (evil-set-initial-state 'mu4e-headers-mode 'emacs)
@@ -244,17 +211,15 @@
   :straight t
   :commands (evil-iedit-state/iedit-mode)
   :config
-  (progn
-    (general-setq iedit-current-symbol-default t
-                  iedit-only-at-symbol-boundaries t
-                  iedit-toggle-key-default nil)
+  (general-setq iedit-current-symbol-default t
+                iedit-only-at-symbol-boundaries t
+                iedit-toggle-key-default nil))
 
-    ;; Enable leader key in iedit and iedit-insert states
-    (config-hydras-insinuate evil-iedit-state-map)))
-
-(use-package evil-ediff
+(use-package evil-collection
   :straight t
-  :after ediff)
+  :after evil
+  :config
+  (evil-collection-init))
 
 (use-package evil-args
   :straight t
@@ -301,12 +266,15 @@
   (with-eval-after-load 'evil
     (global-vi-tilde-fringe-mode +1))
   :preface
-  (defun config-evil--vi-tilde-fringe-off-if-readonly (args)
-    (if buffer-read-only
-        '(-1)
-      args))
+  (progn
+    (defconst config-evil--vi-tilde-inhibited-modes '(eshell-mode comint-mode))
+
+    (defun config-evil--vi-tilde-fringe-maybe-inhibit (args)
+      (if (or buffer-read-only (apply #'derived-mode-p config-evil--vi-tilde-inhibited-modes))
+          '(-1)
+        args)))
   :config
-  (advice-add 'vi-tilde-fringe-mode :filter-args #'config-evil--vi-tilde-fringe-off-if-readonly))
+  (advice-add 'vi-tilde-fringe-mode :filter-args #'config-evil--vi-tilde-fringe-maybe-inhibit))
 
 (use-package evil-nerd-commenter
   :straight t
