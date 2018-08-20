@@ -5,13 +5,15 @@
 (eval-when-compile
   (require 'use-package))
 
+(require 'dash)
 (require 'f)
 (require 'general)
 (require 'paths)
-(require 'dash)
+(require 'pusheen)
 
 (defconst config-eshell-etc-directory (f-join paths-etc-directory "eshell"))
 (autoload 'evil-local-set-key "evil-core")
+(autoload 'page-break-lines-mode "page-break-lines")
 
 
 
@@ -30,10 +32,13 @@
 
   :config
   (progn
-    (require 'eshell-hacks)
-    (require 'pusheen)
-    (setq eshell-banner-message (format "%13s\n%15s\n\n" (pusheen 'winky)
-                                        (propertize "O hai!" 'face '(:height 400))))
+    ;; Customise the prompt header.
+
+    (setq eshell-banner-message
+          (let ((pad-char "\u0080"))
+            (format "%s%s\n%s%s\n\n" pad-char (pusheen 'winky)
+                    pad-char
+                    (propertize " O hai!" 'face '(:height 400)))))
     (add-hook 'eshell-mode-hook #'config-eshell-setup-keybindings)
     (add-hook 'eshell-mode-hook #'pusheen-animate-all)
 
@@ -57,50 +62,174 @@
 
 (use-package pretty-eshell
   :after eshell
+  :preface
+  (progn
+    (defface eshell-dimmed
+      '((t :inherit default))
+      "Face for dimmed text in eshell."
+      :group 'config-eshell)
+
+    (defface eshell-timestamp
+      '((t :inherit eshell-dimmed :height 0.7))
+      "Face for timestamps in eshell."
+      :group 'config-eshell)
+
+    (defun config-eshell--dim-commands-on-submission ()
+      (let ((start eshell-last-output-start)
+            (end (line-end-position)))
+        (let ((inhibit-read-only t))
+          (save-excursion
+            (goto-char start)
+            (search-forward "\u000c")
+            (put-text-property (point) end 'face 'eshell-dimmed)))))
+
+    (defun config-eshell--inhibit-submission-on-empty (f &rest args)
+      (let* ((start eshell-last-output-end)
+             (end (line-end-position))
+             (input (buffer-substring-no-properties start end)))
+        (if (string-empty-p (string-trim input))
+            (delete-region start end)
+          (config-eshell--dim-commands-on-submission)
+          (apply f args)))))
+
   :config
   (progn
-    (setq pretty-eshell-header "\n")
+    ;; Show a horizontal rule and timestamp between commands.
+
+    (defvar-local config-eshell--previous-time nil)
+
+    (setq pretty-eshell-header-fun
+          (let ((page-break "\u000c")
+                (horizontal-tab "\u0009"))
+            (lambda ()
+              (let* ((time (format-time-string "%H:%M" (current-time)))
+                     (timestamp (concat
+                                 horizontal-tab
+                                 (propertize time 'face 'eshell-timestamp))))
+                (prog1 (concat timestamp "\n" page-break "\n")
+                  (setq config-eshell--previous-time time))))))
+
+    (add-hook 'eshell-mode-hook 'page-break-lines-mode)
+
+    ;; Prevent command submission if there's no text to submit.
+
+    (advice-add 'eshell-send-input :around #'config-eshell--inhibit-submission-on-empty)
+
+    ;; Change the prompt, depending on the previous command's exit code.
+
     (setq eshell-prompt-function 'pretty-eshell-prompt-func)
-    (setq pretty-eshell-prompt-string " > ")
-    (setq eshell-prompt-regexp (rx bol (* space)  "> "))
+    (setq pretty-eshell-prompt-string-fun (lambda ()
+                                            (concat " " (if (eshell-exit-success-p)
+                                                            ">"
+                                                          (propertize "✘" 'face 'error))
+                                                    " ")))
+    (setq eshell-prompt-regexp (rx bol (* space) (or ">" "✘") space))
 
     ;; Directory
     (pretty-eshell-define-section config-eshell-dir
       ""
       (abbreviate-file-name (eshell/pwd))
-      '(:foreground "#268bd2" :weight light))
+      '(:inherit eshell-ls-directory :weight light))
 
-    (autoload 'magit-get-current-branch "magit")
+    ;; NOTE: Load just this feature, instead of all of magit.
+    (autoload 'magit-get-current-branch "magit-git")
+    (autoload 'magit-process-file "magit-process")
 
     ;; Git Branch
     (pretty-eshell-define-section config-eshell-git
       ""
-      (magit-get-current-branch)
+      (when-let* ((branch (magit-get-current-branch)))
+        (s-truncate 20 (s-chop-prefixes '("feature/" "release/") branch)))
       '(:foreground "#cb4b16" :weight light))
 
-    ;; Time
-    (pretty-eshell-define-section config-eshell-clock
-      ""
-      (format-time-string "%H:%M" (current-time))
-      '(:foreground "grey60" :weight light))
+    ;; Node version
+    (pretty-eshell-define-section config-eshell-node
+      ""
+      (when (and (bound-and-true-p nvm-current-version)
+                 (locate-dominating-file default-directory ".nvmrc"))
+        (car nvm-current-version))
+      '(:foreground "#d33682" :weight light))
 
-    (setq pretty-eshell-funcs (list config-eshell-dir config-eshell-git config-eshell-clock))))
+    (setq pretty-eshell-funcs (list config-eshell-dir config-eshell-git config-eshell-node))))
+
+
+;; Horrific hacks to align buffer objects via control chars:
+;;
+;; 1. right-align the timestamp in the eshell prompt using C-i control
+;; character.
+;;
+;; 2. center-align the pusheen hero image.
+;;
+;; Adapted from the implementation of page-break-lines.
+
+(defun config-eshell--align-timestamp ()
+  (let* ((space-char 32)
+         (timestamp-width 5) ; HH:MM
+         (spaces-count (- (1+ (window-width)) timestamp-width))
+         (width (* (char-width space-char) spaces-count))
+         (new-display-entry (vconcat (make-list width space-char))))
+    (unless (equal new-display-entry (elt buffer-display-table ?\^I))
+      (aset buffer-display-table ?\^I new-display-entry))))
+
+(defun config-eshell--align-pusheen ()
+  (-let* ((pad-control-char ?\u0080)
+          ((pusheen-cols . _y)
+           (image-size (alist-get 'winky pusheen-image-alist)))
+          (space-char 32)
+          (spaces-count (/ (- (1+ (window-width))
+                              pusheen-cols)
+                           2))
+          (width (truncate (* (char-width space-char) spaces-count)))
+          (new-display-entry (vconcat (make-list width space-char))))
+    (unless (equal new-display-entry
+                   (elt buffer-display-table pad-control-char))
+      (aset buffer-display-table pad-control-char new-display-entry))))
+
+(defun eshell-timestamp--update-display-table (window)
+  (with-current-buffer (window-buffer window)
+    (with-selected-window window
+      (page-break-lines--update-display-table window)
+      (unless buffer-display-table
+        (setq buffer-display-table (make-display-table)))
+      (config-eshell--align-timestamp)
+      (config-eshell--align-pusheen))))
+
+(defun eshell-timestamp--update-display-tables  (&optional frame)
+  (unless (minibufferp)
+    (mapc 'eshell-timestamp--update-display-table
+          (window-list frame 'no-minibuffer))))
+
+(defun eshell-timestamp--configure-hooks ()
+  (dolist (hook '(window-configuration-change-hook
+                  window-size-change-functions
+                  after-setting-font-hook))
+    (add-hook hook 'eshell-timestamp--update-display-tables t t)))
+
+(add-hook 'eshell-mode-hook #'eshell-timestamp--configure-hooks)
 
 
 
-;; Define some eshell commands
+;; proced provides a top-like process manager.
 
-(autoload 'eshell/cd "em-dirs")
+(use-package proced
+  :commands (proced)
+  :general
+  (:keymaps 'proced-mode-map
+   :states 'normal
+   "r" 'proced-refine
+   "R" 'proced-renice)
+  :config
+  (progn
+    (setf (nth 1 (alist-get 'comm proced-grammar-alist))
+          "%-20s")
 
-(defun eshell/j (&rest query)
-  "Change to a directory using fasd with QUERY."
-  (unless query
-    (user-error "Usage error: must supply a query"))
-  (-let* ((query-string (string-join query " "))
-          (results (shell-command-to-string (format "fasd -l -R -d %s" (shell-quote-argument query-string)))))
-    (-if-let* (((dir) (split-string results "\n" t)))
-        (eshell/cd dir)
-      (user-error "No results"))))
+    (setq-default proced-format
+                  '(comm pid state pcpu vsize pmem user))))
+
+;; eshell functions are defined in this lib.
+
+(use-package cb-eshell-funcs
+  :after eshell)
 
 (provide 'config-eshell)
 

@@ -1,8 +1,7 @@
 alias d docker $*
 alias dco docker-compose
-alias e find-file $1
-alias f fasd-find-file -1 ${eshell-flatten-and-stringify $*}
-alias g magit-status
+alias e fasd-find-file -1 ${eshell-flatten-and-stringify $*}
+alias f find-file $1
 alias ga git add
 alias gb git branch -v
 alias gc magit-commit
@@ -19,6 +18,7 @@ alias grh git reset --hard
 alias grm git rm
 alias gs git show
 alias gup git remote update -p && git pull --rebase
+alias k tree -L 2 -C
 alias l ls
 alias la ls -lA
 alias ll ls -l
@@ -26,4 +26,5 @@ alias lsa ls -lah
 alias pf projectile-find-file
 alias rmr rm -r
 alias s magit-status
+alias t proced
 alias tree tree -I target -I node_modules

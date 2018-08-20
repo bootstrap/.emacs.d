@@ -270,10 +270,11 @@
     (defconst config-evil--vi-tilde-inhibited-modes '(eshell-mode comint-mode))
 
     (defun config-evil--vi-tilde-fringe-maybe-inhibit (args)
-      (if (or buffer-read-only (apply #'derived-mode-p config-evil--vi-tilde-inhibited-modes))
+      (if (or buffer-read-only (equal "*scratch*" (buffer-name))
+              (apply #'derived-mode-p config-evil--vi-tilde-inhibited-modes))
           '(-1)
         args)))
-  :config
+  :init
   (advice-add 'vi-tilde-fringe-mode :filter-args #'config-evil--vi-tilde-fringe-maybe-inhibit))
 
 (use-package evil-nerd-commenter

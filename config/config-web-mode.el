@@ -8,8 +8,10 @@
 
 (require 'cb-major-mode-hydra)
 (require 'f)
+(require 'nvm-hacks)
 (require 's)
 (require 'subr-x)
+(require 'tide-hacks)
 
 (autoload 'flycheck-add-mode "flycheck")
 (autoload 'projectile-project-p "projectile")
@@ -418,8 +420,6 @@
   (defun config-web--setup-tide ()
     (config-web-maybe-use-nvm)
     (tide-setup))
-  :init
-  (require 'tide-hacks)
   :general (:states 'normal :keymaps 'tide-mode-map "K" #'tide-documentation-at-point)
   :general (:states '(normal insert) :keymaps 'tide-mode-map
             "M-." #'tide-jump-to-definition

@@ -83,8 +83,8 @@
  delete-by-moving-to-trash nil
  initial-scratch-message nil
  inhibit-startup-message t
- initial-major-mode 'text-mode
- initial-buffer-choice t
+ initial-major-mode 'fundamental-mode
+ initial-buffer-choice #'eshell
  ring-bell-function #'ignore
  history-length 1000
 
@@ -323,6 +323,15 @@
       (fundamental-mode))))
 
 (add-hook 'find-file-hook #'config-basic-settings--prompt-to-open-large-files-in-fundamental-mode)
+
+
+;; Clean up completions buffers
+
+(defun config-basic-settings--cleanup-completions-buffer ()
+  (when-let* ((buf (get-buffer "*Completions*")))
+    (kill-buffer buf)))
+
+(add-hook 'minibuffer-exit-hook #'config-basic-settings--cleanup-completions-buffer)
 
 
 

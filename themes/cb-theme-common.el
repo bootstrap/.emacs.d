@@ -112,9 +112,6 @@
     (hl-line
      ((t :background ,subtle-bg)))
 
-    (eshell-prompt
-     ((t :weight normal :foreground ,orange)))
-
     ;; General font-lock faces.
 
     (font-lock-keyword-face
@@ -182,7 +179,7 @@
     (info-variable-ref-item
      ((t :weight demibold :foreground ,mid-grey)))
 
-    ;; Dired
+    ;; Dired & Eshell
 
     (dired-async-message
      ((t :inherit modeline)))
@@ -199,20 +196,47 @@
     (diredp-dir-name
      ((t :foreground ,emphasis)))
 
+    (eshell-dimmed
+     ((t :foreground ,dimmed-fg)))
+
+    (eshell-ls-directory
+     ((t :foreground ,emphasis :bold t)))
+
+    (eshell-prompt
+     ((t :foreground ,emphasis)))
+
+    (eshell-ls-readonly
+     ((t :bold t :foreground ,dark-grey)))
+
     (diredp-file-name
      ((t :inherit default)))
 
     (diredp-ignored-file-name
-     ((t :inherit diredp-file-name :foreground ,dimmed-fg)))
+     ((t :foreground ,dimmed-fg)))
+
+    (eshell-ls-clutter
+     ((t :foreground ,dimmed-fg)))
+
+    (eshell-ls-missing
+     ((t :inherit error)))
 
     (diredp-symlink
-     ((t :inherit diredp-file-name :foreground ,mid-grey)))
+     ((t :foreground ,mid-grey)))
+
+    (eshell-ls-symlink
+     ((t :foreground ,mid-grey :bold t)))
+
+    (eshell-ls-executable
+     ((t :bold t :foreground ,magenta)))
 
     (diredp-file-suffix
      ((t :foreground ,dimmed-fg)))
 
     (diredp-compressed-file-suffix
      ((t :inherit diredp-file-suffix)))
+
+    (eshell-ls-archive
+     ((t :inherit diredp-compressed-file-name)))
 
     (diredp-number
      ((t :weight ,light-weight)))

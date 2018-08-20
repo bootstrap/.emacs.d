@@ -5,6 +5,8 @@
 (eval-when-compile
   (require 'use-package))
 
+(require 'company-box-hacks)
+
 (use-package company
   :straight t
   :hook (after-init . global-company-mode)
@@ -21,6 +23,9 @@
 
   :preface
   (defun config-company--set-company-vars ()
+    ;; HACK: evil-collection-company seems to be messing with this binding, so I
+    ;; need to manually apply it again. :/
+    (define-key company-active-map (kbd "RET") #'company-complete-selection)
     (setq company-minimum-prefix-length 3)
     (setq company-tooltip-align-annotations t))
 
@@ -38,9 +43,7 @@
    "C-p" #'company-box--prev-line)
   :hook (company-mode . company-box-mode)
   :config
-  (progn
-    (require 'company-box-hacks)
-    (setq company-box-enable-icon nil)))
+  (setq company-box-enable-icon nil))
 
 (use-package company-dabbrev
   :after company
