@@ -15,6 +15,13 @@
 (autoload 'evil-local-set-key "evil-core")
 (autoload 'page-break-lines-mode "page-break-lines")
 
+;; NOTE: Load just this feature, instead of all of magit.
+(autoload 'magit-get-current-branch "magit-git")
+(autoload 'magit-process-file "magit-process")
+
+(autoload 'display-buffer-fullframe "display-buffer-fullframe")
+(autoload 'page-break-lines--update-display-table "page-break-lines")
+
 
 
 ;; eshell implements a shell in emacs lisp.
@@ -131,10 +138,6 @@
       (abbreviate-file-name (eshell/pwd))
       '(:inherit eshell-ls-directory :weight light))
 
-    ;; NOTE: Load just this feature, instead of all of magit.
-    (autoload 'magit-get-current-branch "magit-git")
-    (autoload 'magit-process-file "magit-process")
-
     ;; Git Branch
     (pretty-eshell-define-section config-eshell-git
       ""
@@ -230,6 +233,51 @@
 
 (use-package cb-eshell-funcs
   :after eshell)
+
+;; Prodigy provides a UI for managing external processes.
+
+(use-package prodigy
+  :straight t
+  :commands (prodigy)
+  :preface
+  (progn
+    (defun prodigy-start-with-tag (tag)
+      "Start all services with TAG."
+      (interactive (list (intern (completing-read "Start processes with tag: " (prodigy-tags)))))
+      (prodigy)
+      (if-let ((services (prodigy-services-tagged-with tag)))
+          (dolist (service services)
+            (prodigy-start-service service))
+        (user-error "No services for tag")))
+
+    (defun prodigy-stop-with-tag (tag)
+      "Start all services with TAG."
+      (interactive (list (intern (completing-read "Stop processes with tag: " (prodigy-tags)))))
+      (prodigy)
+      (if-let ((services (prodigy-services-tagged-with tag)))
+          (dolist (service services)
+            (prodigy-stop-service service))
+        (user-error "No services for tag"))))
+
+  :general
+  (:states 'motion :keymaps 'prodigy-mode-map
+   "TAB" #'prodigy-display-process
+   "gr" #'prodigy-refresh
+   "t" #'prodigy-start-with-tag
+   "T" #'prodigy-stop-with-tag)
+  :config
+  (progn
+    (add-to-list 'display-buffer-alist
+                 `(,(rx bos "*prodigy*" eos)
+                   (display-buffer-reuse-window
+                    display-buffer-fullframe)
+                   (reusable-frames . visible)))
+
+    ;; Truncate buffers.
+    (setq prodigy-view-truncate-by-default t)
+
+    ;; Use standard completing-read.
+    (setq prodigy-completion-system 'default)))
 
 (provide 'config-eshell)
 
