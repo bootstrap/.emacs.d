@@ -162,12 +162,6 @@
   :after magit
   :config
   (progn
-    (pretty-magit-add-leader (rx symbol-start "feature/") ?
-                             '(:foreground "#859900" :v-adjust 0.01 :height 0.9))
-
-    (pretty-magit-add-leader (rx symbol-start "release/") ?
-                             '(:foreground "#cb4b16" :v-adjust 0.01 :height 0.9))
-
     (defconst config-git-jira-projects '("CAPPS"))
 
     (pretty-magit-add-leader
@@ -177,6 +171,18 @@
 
     (pretty-magit-add-leader (rx ":lipstick:") ?
                              '(:foreground "grey60" :height 1.2))))
+
+;; VC annotate happens to be a nice way to file changes.
+
+(use-package vc-annotate
+  :commands (vc-annotate)
+  :general
+  (:states 'normal :keymaps 'vc-annotate-mode-map
+   "n" 'vc-annotate-next-revision
+   "f" 'vc-annotate-next-revision
+   "p" 'vc-annotate-prev-revision
+   "b" 'vc-annotate-prev-revision
+   "." 'vc-annotate-working-revision))
 
 (provide 'config-git)
 
