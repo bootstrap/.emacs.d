@@ -18,17 +18,15 @@
 
 
 
-(cb-major-mode-hydra-define web-js-mode
-  "Refactor"
-  (("ro" js-refactor-commands-organize-imports "organise imports")
-   ("ra" js-refactor-commands-align-object-literal-values "align object values")
-   ("re" js-refactor-commands-expand-comma-bindings "expand comma bindings")
-   ("rs" js-refactor-commands-toggle-sealed-object-type "toggle sealed type")))
-
-(cb-major-mode-hydra-define web-ts-mode
-  "Tide"
-  (("r" tide-refactor "refactor")
-   ("e" tide-project-errors "errors in project")))
+(dolist (mode '(web-js-mode web-ts-mode))
+  (eval `(cb-major-mode-hydra-define ,mode
+           "Refactor"
+           (("ro" js-refactor-commands-organize-imports "organise imports")
+            ("ra" js-refactor-commands-align-object-literal-values "align object values")
+            ("re" js-refactor-commands-expand-comma-bindings "expand comma bindings")
+            ("rs" js-refactor-commands-toggle-sealed-object-type "toggle sealed type"))
+           "Test"
+           (("t" js-test-commands-test-this-file-dwim "test file")))))
 
 
 
@@ -51,8 +49,8 @@
       (when-let* ((bin (config-web--node-modules-bin-dir)))
         (setq-local exec-path (cons bin exec-path)))))
 
-  :init
-  (setq web-mode-extra-keywords '(("javascript" . ("type"))))
+  :custom
+  (web-mode-extra-keywords '(("javascript" . ("declare" "module" "type"))))
 
   :config
   (progn
@@ -120,12 +118,38 @@
          ("\\.avsc\\'" . avro-mode)
          ("\\.avro\\'" . avro-mode))
   :preface
-  (defun config-web--enable-readonly-mode-in-node-modules ()
-    (when (and (buffer-file-name)
-               (string-match-p (rx "/node_modules/") (buffer-file-name)))
-      (read-only-mode +1)))
+  (progn
+    (defun config-web--choose-mode (&rest _)
+      (catch 'stop
+        (-each `(("\\.json\\'" . web-json-mode)
+                 ("\\.eslintrc\\'" . web-json-mode)
+                 ("\\.babelrc\\'" . web-json-mode)
+                 ("\\.es6\\'"  . web-js-mode)
+                 ("\\.js\\.snap\\'"  . web-js-snap-mode)
+                 ("\\.tsx?\\'"  . web-ts-mode)
+                 ("\\.jsx?\\'" . web-js-mode)
+                 (,(rx bos "*Org Src" (+? nonl) "[ js ]*" eos) . web-js-mode))
+          (-lambda ((regex . mode))
+            (if (string-match-p regex (buffer-name))
+                (progn
+                  (funcall mode)
+                  (throw 'stop nil))
+              (web-mode))))))
+
+    (defun config-web--enable-readonly-mode-in-node-modules ()
+      (when (and (buffer-file-name)
+                 (string-match-p (rx "/node_modules/") (buffer-file-name)))
+        (read-only-mode +1))))
   :init
-  (add-hook 'find-file-hook #'config-web--enable-readonly-mode-in-node-modules))
+  (progn
+    (add-hook 'find-file-hook #'config-web--enable-readonly-mode-in-node-modules)
+
+    ;; HACK: Ensure these modes always override other web programming major modes.
+    (advice-add 'js-mode :override #'config-web--choose-mode)
+    (advice-add 'json-mode :override #'config-web--choose-mode)
+    (advice-add 'typescript-mode :override #'config-web--choose-mode)
+    (advice-add 'javascript-mode :override #'config-web--choose-mode)
+    (advice-add 'js2-mode :override #'config-web--choose-mode)))
 
 (use-package flycheck
   :defer t
@@ -158,7 +182,10 @@
 
     (flycheck-add-mode 'css-csslint 'web-css-mode)
     (flycheck-add-mode 'json-jsonlint 'web-json-mode)
-    (flycheck-add-mode 'html-tidy 'web-html-mode)))
+    (flycheck-add-mode 'html-tidy 'web-html-mode)
+
+    (with-eval-after-load 'lsp-ui
+      (flycheck-add-next-checker 'lsp-ui 'javascript-eslint))))
 
 (use-package emmet-mode
   :straight t
@@ -207,71 +234,16 @@
         (emmet-expand-yas))))
 
   :init
-  (with-eval-after-load 'web-mode
-    (define-key web-mode-map (kbd "<C-return>") #'emmet-expand-line))
+  (progn
+    (with-eval-after-load 'nxml-mode
+      (define-key nxml-mode-map (kbd "<C-return>") #'emmet-expand-line))
+    (with-eval-after-load 'web-mode
+      (define-key web-mode-map (kbd "<C-return>") #'emmet-expand-line)))
 
   :config
   (progn
     (setq emmet-move-cursor-between-quotes t)
     (add-hook 'web-js-mode-hook #'config-web--set-jsx-classname-on)))
-
-(use-package flycheck-flow
-  :straight t
-  :after (:and web-mode-submodes flycheck)
-  :config
-  (progn
-    (flycheck-add-mode 'javascript-flow 'web-js-mode)
-    (flycheck-add-next-checker 'javascript-flow 'javascript-eslint)))
-
-(use-package flow
-  :commands (flow-insert-flow-annotation)
-  :general (:keymaps 'web-js-mode-map "C-c C-t" #'flow-type-at))
-
-(use-package tern
-  :straight t
-  :disabled t
-  :commands (tern-mode)
-  :hook (web-js-mode . config-web--maybe-enable-tern)
-  :general
-  (:states 'normal :keymaps 'tern-mode-keymap
-   "K" 'tern-get-docs
-   "gd"  'tern-find-definition
-   "M-." 'tern-find-definition
-   "M-," 'tern-pop-find-definition)
-  :preface
-  (progn
-    (autoload 'flycheck-overlay-errors-at "flycheck")
-
-    (defun config-web--maybe-enable-tern ()
-      (unless config-etags-in-query-replace-session-p
-        (tern-mode +1)))
-
-    (defun config-web--flycheck-errors-at-point-p ()
-      (when (bound-and-true-p flycheck-mode)
-        (flycheck-overlay-errors-at (point))))
-
-    (defun config-web--maybe-suppress-tern-hints (f &rest args)
-      (unless (config-web--flycheck-errors-at-point-p)
-        (apply f args))))
-
-  :config
-  (progn
-    (setq tern-command (add-to-list 'tern-command "--no-port-file" t))
-
-    (unless (getenv "NODE_PATH")
-      (setenv "NODE_PATH" "/usr/local/lib/node_modules"))
-
-    (advice-add 'tern-show-argument-hints :around #'config-web--maybe-suppress-tern-hints)))
-
-(use-package company-tern
-  :straight t
-  :after (:and web-mode-submodes tern)
-  :config
-  (progn
-    (setq company-tern-meta-as-single-line t)
-    (setq company-tern-property-marker " <p>")
-    (with-eval-after-load 'company
-      (add-to-list 'company-backends 'company-tern))))
 
 (use-package aggressive-indent
   :defer t
@@ -289,8 +261,7 @@
 
 (use-package prettier-js
   :straight t
-  :commands (prettier-js-mode prettier-js)
-  :after web-mode-submodes
+  :hook (web-mode . prettier-js-mode)
   :preface
   (progn
     (defvar prettier-js-inhibited-for-project nil)
@@ -300,17 +271,13 @@
     (defun config-web--child-file-of-node-modules-p ()
       (and (buffer-file-name) (string-match-p "/node_modules/" (buffer-file-name))))
 
-    (defun config-web--maybe-enable-prettier ()
-      (unless prettier-js-inhibited-for-project
-        (when (and (derived-mode-p 'web-js-mode 'web-ts-mode)
-                   (not (config-web--child-file-of-node-modules-p)))
-          (prettier-js-mode +1))))
-
-    (define-globalized-minor-mode prettier-js-global-mode
-      prettier-js-mode config-web--maybe-enable-prettier))
-
+    (defun config-web--maybe-inhibit-prettier (f &rest args)
+      (when (derived-mode-p 'web-js-base-mode)
+        (unless (or prettier-js-inhibited-for-project
+                    (config-web--child-file-of-node-modules-p))
+          (apply f args)))))
   :config
-  (prettier-js-global-mode +1))
+  (advice-add #'prettier-js :around #'config-web--maybe-inhibit-prettier))
 
 (use-package compile
   :defer t
@@ -342,6 +309,38 @@
              js-refactor-commands-align-object-literal-values
              js-refactor-commands-toggle-sealed-object-type))
 
+(use-package js-test-commands
+  :commands (js-test-commands-test-this-file-dwim))
+
+
+;; LSP
+;;
+;; Configure language server protocol for JS and Typescript.
+
+(defun config-web--lsp-company-transformer (candidates)
+  (let ((completion-ignore-case t))
+    (all-completions (company-grab-symbol) candidates)))
+
+(defun config-web-enable-lsp ()
+  (if (locate-dominating-file default-directory ".flowconfig")
+      (lsp-javascript-flow-enable)
+    (lsp-javascript-typescript-enable))
+
+  (with-no-warnings
+    (make-local-variable 'company-transformers)
+    (setq-local company-backends '(company-lsp))
+    (push 'config-web--lsp-company-transformer company-transformers)))
+
+(add-hook 'web-js-base-mode-hook #'config-web-enable-lsp)
+
+(use-package lsp-javascript-flow
+  :straight (:host github :repo "emacs-lsp/lsp-javascript")
+  :commands (lsp-javascript-flow-enable))
+
+(use-package lsp-javascript-typescript
+  :straight (:host github :repo "emacs-lsp/lsp-javascript")
+  :commands (lsp-javascript-typescript-enable))
+
 
 ;; Node
 
@@ -354,60 +353,6 @@
     (when (locate-dominating-file default-directory ".nvmrc")
       (nvm-use-for-buffer)
       t)))
-
-
-;; Typescript
-
-(defalias 'typescript-mode #'web-ts-mode)
-
-(use-package tide
-  :straight t
-  :preface
-  (defun config-web--setup-tide ()
-    (config-web-maybe-use-nvm)
-    (tide-setup))
-  :general (:states 'normal :keymaps 'tide-mode-map "K" #'tide-documentation-at-point)
-  :general (:states '(normal insert) :keymaps 'tide-mode-map
-            "M-." #'tide-jump-to-definition
-            "M-," #'tide-jump-back)
-  :hook (web-ts-mode . config-web--setup-tide)
-  :config
-  (progn
-    (with-eval-after-load 'flycheck
-      (flycheck-add-mode 'typescript-tide 'web-ts-mode))
-
-    (add-to-list 'display-buffer-alist
-                 `(,(rx bos "*tide-documentation*" eos)
-                   (display-buffer-reuse-window
-                    display-buffer-in-side-window)
-                   (reusable-frames . visible)
-                   (side            . bottom)
-                   (slot            . 1)
-                   (window-width    . 0.5)))))
-
-
-
-;; HACK: Ensure these modes are used when others are available potentially in
-;; auto-mode-alist.
-
-(defun config-web--choose-mode (&rest _)
-  (catch 'stop
-    (-each '(("\\.json\\'" . web-json-mode)
-             ("\\.eslintrc\\'" . web-json-mode)
-             ("\\.babelrc\\'" . web-json-mode)
-             ("\\.es6\\'"  . web-js-mode)
-             ("\\.js\\.snap\\'"  . web-js-snap-mode)
-             ("\\.tsx?\\'"  . web-ts-mode)
-             ("\\.jsx?\\'" . web-js-mode))
-      (-lambda ((regex . mode))
-        (if (string-match-p regex (buffer-name))
-            (progn
-              (funcall mode)
-              (throw 'stop nil))
-          (web-mode))))))
-
-(advice-add 'js-mode :override #'config-web--choose-mode)
-(advice-add 'json-mode :override #'config-web--choose-mode)
 
 (provide 'config-web-mode)
 

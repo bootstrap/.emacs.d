@@ -27,14 +27,21 @@
   (general-setq treemacs-persist-file
                 (f-join paths-cache-directory "treemacs-persist"))
   :preface
-  (defun config-treemacs-set-tab-width ()
-    (setq-local tab-width 1))
+  (defun config-treemacs--setup-buffer ()
+    (setq-local tab-width 1)
+    (setq-local cursor-type nil))
+
+  :hook
+  (treemacs-mode . config-treemacs--setup-buffer)
 
   :config
   (progn
     (require 'projectile)
 
     (general-setq
+     ;; Disable the indicator next to open files--hl-line is sufficient.
+     treemacs-fringe-indicator-mode nil
+
      treemacs-recenter-after-file-follow nil
      treemacs-follow-after-init t
      treemacs-silent-filewatch t
@@ -47,13 +54,10 @@
      treemacs-show-hidden-files nil
      treemacs-width 30)
 
+    (treemacs-fringe-indicator-mode t)
     (treemacs-follow-mode t)
     (treemacs-filewatch-mode t)
     (treemacs-git-mode 'simple)
-
-    ;; Disable the indicator next to open files--hl-line is sufficient.
-
-    (treemacs-fringe-indicator-mode -1)
 
     ;; Hide ignored files.
 
@@ -73,15 +77,22 @@
     (setq treemacs-icon-closed-png (concat (all-the-icons-faicon "folder") "\t"))
     (setq treemacs-icon-open-png (concat (all-the-icons-faicon "folder-open") "\t"))
     (setq treemacs-icon-text (concat (all-the-icons-faicon "file-text-o") "\t"))
-    (setq treemacs-icon-fallback (concat (all-the-icons-faicon "file") "\t"))
-
-    (add-hook 'treemacs-mode-hook #'config-treemacs-set-tab-width)))
+    (setq treemacs-icon-fallback (concat (all-the-icons-faicon "file") "\t"))))
 
 (use-package treemacs-evil
   :straight t
-  :after (:and treemacs evil)
+  :after treemacs
+  :preface
+  (defun config-treemacs--buffer-setup ()
+    (require 'treemacs-evil)
+    (setq evil-treemacs-state-cursor (list (face-background 'hl-line) nil))
+    (evil-treemacs-state +1))
+  :hook
+  (treemacs-mode . config-treemacs--buffer-setup)
   :config
-  (setq evil-treemacs-state-cursor '("SkyBlue" box)))
+  (progn
+    (evil-define-key 'treemacs treemacs-mode-map (kbd "J") 'treemacs-next-project)
+    (evil-define-key 'treemacs treemacs-mode-map (kbd "K") 'treemacs-previous-project)))
 
 (use-package treemacs-projectile
   :straight t

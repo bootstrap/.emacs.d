@@ -11,6 +11,9 @@
 (require 'projectile-funcs)
 (require 'projectile-hacks)
 
+(autoload 'js-test-commands-locate-impl-file "js-test-commands")
+(autoload 'js-test-commands-locate-test-file "js-test-commands")
+
 
 
 ;; projectile-funcs contains functions used by the configuration for projectile.
@@ -52,7 +55,7 @@
         (funcall fn string directory)))
 
     (defun config-projectile--file-has-test-suffix-p (file)
-      (string-suffix-p ".test.js" (-last-item (f-split file))))
+      (string-match-p (rx ".test." (or "js" "ts") eos) file))
 
     (defun config-projectile--file-is-child-of-test-dir-p (file)
       (seq-contains (f-split file) "test"))
@@ -63,52 +66,15 @@
           (when-let* ((file (buffer-file-name)))
             (config-projectile--file-is-child-of-test-dir-p file))))
 
-
     (defun config-projectile--substitute-test-with-impl (&optional existing)
       (or existing
-          ;; File and test in same dir.
           (when-let* ((file (buffer-file-name)))
-            (when (string-suffix-p ".test.js" file)
-              (s-replace-regexp (rx ".test.js" eos) ".js" file)))
-          ;; File in tests are in different trees.
-          (when-let* ((file (buffer-file-name))
-                      (impl-dir (if (f-dir? (f-join (projectile-project-root) "lib"))
-                                    "/lib/"
-                                  "/src/"))
-                      (guess (s-replace-all `((".test" . "")
-                                              ("/test/" . ,impl-dir))
-                                            file)))
-            (if (file-directory-p (f-no-ext guess))
-                (f-join (f-no-ext guess) "index.js")
-              guess))))
+            (js-test-commands-locate-impl-file file))))
 
     (defun config-projectile--substitute-impl-with-test (&optional existing)
       (or existing
-          ;; File and test in same dir.
-          (when-let* ((file (buffer-file-name))
-                      (guess (format "%s.test.js" (f-no-ext file))))
-            (when (file-exists-p guess)
-              guess))
-          ;; File in tests are in different trees.
-          (when-let* ((file (buffer-file-name))
-                      (guess (replace-regexp-in-string (rx "/" (or "lib" "src") "/") "/test/" file t t)))
-            (cond
-             ((file-exists-p guess)
-              guess)
-
-             ((equal "index.js" (file-name-nondirectory file))
-              (let ((dir (file-name-directory (directory-file-name (file-name-directory guess))))
-                    (base (file-name-base (directory-file-name (file-name-directory guess))))
-                    (ext (file-name-extension guess)))
-                (f-join dir (format "%s.test.%s" base ext))))
-
-             ((equal "js" (file-name-extension guess))
-              (let ((dir (file-name-directory guess))
-                    (base (file-name-nondirectory (file-name-sans-extension guess)))
-                    (ext (file-name-extension guess)))
-                (f-join dir (format "%s.test.%s" base ext))))
-             (t
-              guess)))))
+          (when-let* ((file (buffer-file-name)))
+            (js-test-commands-locate-test-file file))))
 
     (defun config-projectile-test-project (arg)
       (interactive "P")
@@ -120,18 +86,20 @@
     (advice-add 'projectile-load-known-projects :override #'projectile-funcs-refresh-projects)
     (advice-add 'projectile-save-known-projects :override #'ignore)
 
+    (setq projectile-project-search-path paths-project-directories)
     (setq projectile-completion-system 'ivy)
     (setq projectile-switch-project-action #'dired)
     (setq projectile-enable-caching t)
     (setq projectile-create-missing-test-files t)
 
-    (setq projectile-globally-ignored-files '("TAGS" ".DS_Store"))
+    (setq projectile-globally-ignored-files '("TAGS" ".DS_Store" "package-lock.json"))
     (setq projectile-globally-ignored-file-suffixes '("meta" "jsbundle" "gz" "zip" "tar" "elc"))
 
     (setq projectile-ignored-project-function #'projectile-funcs-ignored-subdir-p)
 
     (setq projectile-globally-ignored-directories
           '(
+            "coverage"
             ".bzr"
             ".ensime_cache"
             ".eunit"
@@ -145,7 +113,7 @@
             "dist"
             "jars"
             "node_modules"
-            "flow-typed"
+            "flow-typed/npm"
             "vendor"
             "straight/repos"
             "target"

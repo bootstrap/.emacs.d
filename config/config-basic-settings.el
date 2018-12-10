@@ -42,6 +42,7 @@
 ;; sure is.
 
 (global-set-key (kbd "<f2>") #'next-multiframe-window)
+(global-set-key (kbd "S-<f2>") #'previous-multiframe-window)
 
 ;;; Define some convenience aliases
 
@@ -78,13 +79,17 @@
 (setq-default indent-tabs-mode nil)
 (setq-default sentence-end-double-space t)
 
+;; Show eshell as default buffer, unless Emacs was opened to edit a file
+;; directly.
+(unless (< 1 (length command-line-args))
+  (general-setq initial-buffer-choice #'eshell))
+
 (general-setq
  sentence-end-double-space nil
  delete-by-moving-to-trash nil
  initial-scratch-message nil
  inhibit-startup-message t
  initial-major-mode 'fundamental-mode
- initial-buffer-choice #'eshell
  ring-bell-function #'ignore
  history-length 1000
 
@@ -391,6 +396,9 @@
       (seq-intersection (f-ext f)
                         '("gz" "zip" "tar")))
 
+    (defun config-basic-settings--sudo-file-p (f)
+      (string-prefix-p "/sudo:root@" f))
+
     (defun config-basic-settings--child-of-boring-relative-dir-p (f)
       (string-match-p (rx "/"
                           (or
@@ -402,6 +410,7 @@
                            "Maildir"
                            "build"
                            "dist"
+                           "flow-typed/npm"
                            "straight/repos"
                            "target"
                            "vendor"
@@ -409,21 +418,29 @@
                           "/")
                       f))
 
+    (defconst config-basic-settings--abs-dirs
+      (seq-map (lambda (it) (f-slash (file-truename it)))
+               (list "/var/folders/"
+                     "/usr/local/Cellar/"
+                     "/tmp/"
+                     "/nix/store/"
+                     paths-cache-directory
+                     paths-etc-directory)))
+
     (defun config-basic-settings--child-of-boring-abs-dir-p (f)
       (let ((ignore-case (eq system-type 'darwin)))
         (seq-find (lambda (d)
-                    (string-prefix-p d f ignore-case))
-                  (list "/var/folders/"
-                        "/usr/local/Cellar/"
-                        "/tmp/"
-                        "/nix/store/"
-                        (f-expand (concat user-emacs-directory "etc/")))))))
+                    (or
+                     (string-prefix-p d f ignore-case)
+                     (string-prefix-p d (file-truename f) ignore-case)))
+                  config-basic-settings--abs-dirs))))
 
   :config
   (general-setq
    recentf-max-saved-items 1000
    recentf-exclude '(config-basic-settings--boring-filename-p
                      config-basic-settings--boring-extension-p
+                     config-basic-settings--sudo-file-p
                      config-basic-settings--child-of-boring-relative-dir-p
                      config-basic-settings--child-of-boring-abs-dir-p)))
 

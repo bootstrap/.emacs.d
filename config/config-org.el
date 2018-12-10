@@ -21,6 +21,7 @@
 (require 'subr-x)
 
 (autoload 'org-todo "org")
+(autoload 'jira-utils-read-issue-url-for-org-header "jira-utils")
 
 
 
@@ -45,8 +46,6 @@
 (general-setq org-directory "~/org")
 
 (defvar config-org-work-file (f-join org-directory "work_pushpay.org"))
-(defvar config-org-journal-file (f-join org-directory "journal.org"))
-(defvar config-org-drill-file (f-join org-directory "drill" "drill.org"))
 
 (general-setq
  org-default-notes-file (f-join org-directory "notes.org")
@@ -93,17 +92,13 @@
  ;; org-babel
 
  org-confirm-babel-evaluate nil
- org-babel-load-languages '((emacs-lisp . t)
-                            (restclient . t)
-                            (gnuplot . t)
-                            (python . t)
-                            (shell . t)
-                            (sql . t))
 
  ;; org-export
 
  org-export-backends '(ascii html latex odt gfm koma-letter custom-confluence)
- org-export-exclude-tags '("noexport" "crypt")
+ org-html-html5-fancy t
+ org-html-postamble nil
+ org-export-exclude-tags '("noexport" "no_export" "crypt")
  org-export-coding-system 'utf-8
 
  ;; org-habit
@@ -115,21 +110,10 @@
  org-tags-exclude-from-inheritance '("crypt" "project")
  org-crypt-disable-auto-save 'encypt
 
- ;; org-drill
-
- org-drill-scope (let ((dir (concat org-directory "/drill")))
-                   (when (f-dir? dir)
-                     (f-files dir)))
- org-drill-learn-fraction 0.25
- org-drill-adjust-intervals-for-early-and-late-repetitions-p t
- org-drill-add-random-noise-to-intervals-p t
- org-drill-save-buffers-after-drill-sessions-p nil
-
  org-refile-targets
- '((org-drill-scope :maxlevel . 3)
-   (org-directory :maxlevel . 3)
+ '((nil . (:maxlevel . 3))
    (org-default-notes-file :maxlevel . 3)
-   (nil :maxlevel . 3))
+   (org-directory :maxlevel . 3))
 
  org-attach-directory (f-join org-directory "data")
  org-archive-default-command #'config-org--archive-done-tasks
@@ -237,7 +221,7 @@
                   (tags-todo "someday&skill"
                              ((org-agenda-overriding-header "Decide whether to promote any learning tasks to TODOs"))))
                  ((org-agenda-tag-filter-preset
-                   '("-drill" "-gtd" "-ignore"))
+                   '("-gtd" "-ignore"))
                   (org-agenda-include-inactive-timestamps t)
                   (org-agenda-files (list org-default-notes-file config-org-work-file org-agenda-diary-file))
                   (org-agenda-archives-mode nil)))
@@ -297,13 +281,6 @@
                   `(file+datetree config-org-work-file) "* %?\n%^t")
 
                  (entry
-                  "j" "Journal"
-                  '(file config-org-journal-file) "* %u\n\n%?"
-                  :type 'entry
-                  :jump-to-captured t
-                  :prepend nil)
-
-                 (entry
                   "l" "Link"
                   '(file+olp org-default-notes-file "Links")
                   '(function cb-org-capture-url-read-url)
@@ -311,9 +288,25 @@
 
                  (entry
                   "L" "Link (work)"
-                  '(function cb-org-capture-url-read-url)
                   `(file+olp config-org-work-file "Links")
+                  '(function cb-org-capture-url-read-url)
                   :immediate-finish t)
+
+                 (entry
+                  "J" "Jira issue reference (work)"
+                  `(file config-org-work-file)
+                  '(function jira-utils-read-issue-url-for-org-header)
+                  :jump-to-captured t
+                  :immediate-finish t
+                  :type 'item)
+
+                 (entry
+                  "K" "Kanban issue reference (work)"
+                  `(file+olp config-org-work-file "Rumble Kanban")
+                  '(function jira-utils-read-issue-url-for-org-header)
+                  :jump-to-captured t
+                  :immediate-finish t
+                  :type 'item)
 
                  (entry
                   "s" "Someday"
@@ -336,42 +329,6 @@
                   "* MAYBE Read %i%?")
 
                  (entry
-                  "0" "Drill (item)"
-                  '(file+olp config-org-drill-file "Uncategorised")
-                  "* Item                :drill:
-
-%?
-"
-                  :jump-to-captured t)
-
-                 (entry
-                  "1" "Drill (question)"
-                  '(file+olp config-org-drill-file "Uncategorised")
-                  "* Question                :drill:
-
-%?
-
-** Answer
-"
-                  :jump-to-captured t)
-
-                 (entry
-                  "2" "Drill (two-sided)"
-                  '(file+olp config-org-drill-file "Uncategorised")
-                  "* Question                :drill:
-:PROPERTIES:
-:DRILL_CARD_TYPE: twosided
-:END:
-
-%?
-
-** Side 1
-
-** Side 2
-"
-                  :jump-to-captured t)
-
-                 (entry
                   "e" "Email task"
                   '(file org-default-notes-file) "* TODO %?\n%a")
 
@@ -381,9 +338,22 @@
 
 
 
+;; HACK: Dummy definitions to fix org html export incompatability.
+(defvar font-lock-beg nil)
+(defvar font-lock-end nil)
+
+(use-package gnuplot :straight t :defer t)
+(use-package ob-restclient :straight t :defer t)
+(use-package ox-gfm :straight t :after org)
+
+;; Let's not fuck this one up.
+(eval-and-compile
+  (defconst cb-org-load-path (expand-file-name "straight/build/org/" user-emacs-directory)))
+
 (use-package org
   :straight org-plus-contrib
   :defer t
+  :load-path cb-org-load-path
   :general
   (:states 'normal :keymaps 'org-mode-map "RET" #'org-return)
   (:keymaps 'org-mode-map
@@ -452,7 +422,22 @@
 
   :config
   (progn
+    (with-eval-after-load 'evil
+      (evil-define-key 'normal org-mode-map (kbd "TAB") #'org-cycle))
+
+    (general-setq org-babel-load-languages
+                  '((emacs-lisp . t)
+                    (restclient . t)
+                    (js . t)
+                    (gnuplot . t)
+                    (python . t)
+                    (shell . t)
+                    (sql . t)))
+
     (setf (cdr (assoc 'file org-link-frame-setup)) #'find-file-other-window)
+
+    (add-to-list 'org-latex-default-packages-alist
+                 '("colorlinks=true" "hyperref" nil))
 
     (add-hook 'org-babel-after-execute-hook 'org-display-inline-images 'append)
     (advice-add 'org-add-log-note :before #'config-org--exit-minibuffer)
@@ -461,15 +446,11 @@
 (use-package cb-org-capture-url :after org)
 (use-package cb-org-gdrive :hook (org-mode . cb-org-gdrive-init))
 (use-package cb-org-pgp-decrpyt :hook (org-mode . cb-org-pgp-decrpyt-init))
-(use-package gnuplot :straight t :defer t)
 (use-package ob-gnuplot :after org)
-(use-package ob-restclient :straight t :defer t)
 (use-package ob-shell :after org)
 (use-package ob-sql :after org)
-(use-package org-drill :commands (org-drill))
 (use-package org-habit :after org-agenda)
 (use-package org-hydras :commands (org-babel/body))
-(use-package ox-gfm :straight t :after org)
 
 (use-package org-agenda
   :after org
@@ -721,35 +702,9 @@
   :config
   (add-to-list 'org-latex-packages-alist '("AUTO" "babel" nil)))
 
-(use-package ox-html
-  :after org
-  :preface
-  (defun config-org-html-open-tags-setup
-      (number _group-number _start-group-p _end-group-p topp bottomp)
-    (cond (topp "<tr class=\"tr-top\">")
-          (bottomp "<tr class=\"tr-bottom\">")
-          (t (if (= (mod number 2) 1)
-                 "<tr class=\"tr-odd\">"
-               "<tr class=\"tr-even\">"))))
-  :config
-  (general-setq
-   org-html-html5-fancy t
-   org-html-postamble nil
-
-   ;; Highlight alternating rows in HTML tables.
-
-   org-html-table-row-open-tag #'config-org-html-open-tags-setup
-   org-html-head-extra
-   "
-<style type=\"text/css\">
-table tr.tr-odd td {
-      background-color: #FCF6CF;
-}
-table tr.tr-even td {
-      background-color: #FEFEF2;
-}
-</style>
-"))
+(use-package htmlize
+  :straight t
+  :defer t)
 
 (use-package cb-org-export-koma-letter
   :after org
@@ -763,7 +718,6 @@ table tr.tr-even td {
 (use-package cb-org-goto
   :commands (cb-org-goto-agenda
              cb-org-goto-diary
-             cb-org-goto-journal
              cb-org-goto-notes
              cb-org-goto-todo-list
              cb-org-goto-work
@@ -799,11 +753,6 @@ table tr.tr-even td {
 (use-package org-download
   :straight t
   :hook (dired-mode . org-download-enable))
-
-(use-package org-drill-table
-  :disabled t
-  :straight t
-  :hook (org-ctrl-c-ctrl-c . org-drill-table-update))
 
 (use-package org-html-span :after org)
 

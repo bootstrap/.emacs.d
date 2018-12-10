@@ -24,6 +24,8 @@
 
 
 
+(defvar config-eshell--changing-dir-interactively nil)
+
 ;; eshell implements a shell in emacs lisp.
 
 (use-package eshell
@@ -39,13 +41,32 @@
 
   :config
   (progn
+    (require 'eshell-hacks)
+    (general-setq eshell-modules-list
+                  '(eshell-tramp
+                    eshell-alias
+                    eshell-banner
+                    eshell-basic
+                    eshell-cmpl
+                    eshell-dirs
+                    eshell-glob
+                    eshell-hist
+                    eshell-ls
+                    eshell-pred
+                    eshell-prompt
+                    eshell-script
+                    eshell-term
+                    eshell-unix))
+
     ;; Customise the prompt header.
 
     (setq eshell-banner-message
-          (let ((pad-char "\u0080"))
-            (format "%s%s\n%s%s\n\n" pad-char (pusheen 'winky)
-                    pad-char
-                    (propertize " O hai!" 'face '(:height 400)))))
+          (let* ((pad-char "\u0080")
+                 (str
+                  (format "%s%s\n%s%s\n\n" pad-char (pusheen 'winky)
+                          pad-char
+                          (propertize " O hai!" 'face '(:height 400)))))
+            (propertize str 'read-only t)))
     (add-hook 'eshell-mode-hook #'config-eshell-setup-keybindings)
     (add-hook 'eshell-mode-hook #'pusheen-animate-all)
 
@@ -88,16 +109,21 @@
           (save-excursion
             (goto-char start)
             (search-forward "\u000c")
-            (put-text-property (point) end 'face 'eshell-dimmed)))))
+            (put-text-property (point) end 'face 'eshell-dimmed)
+            (put-text-property (point) end 'read-only t)
+            (put-text-property (point) end 'rear-nonsticky t)))))
 
     (defun config-eshell--inhibit-submission-on-empty (f &rest args)
-      (let* ((start eshell-last-output-end)
-             (end (line-end-position))
-             (input (buffer-substring-no-properties start end)))
-        (if (string-empty-p (string-trim input))
-            (delete-region start end)
-          (config-eshell--dim-commands-on-submission)
-          (apply f args)))))
+      ;; Always run command if this is a dir change from hyrda.
+      (if config-eshell--changing-dir-interactively
+          (apply f args)
+        (let* ((start eshell-last-output-end)
+               (end (line-end-position))
+               (input (buffer-substring-no-properties start end)))
+          (if (string-empty-p (string-trim input))
+              (delete-region start end)
+            (config-eshell--dim-commands-on-submission)
+            (apply f args))))))
 
   :config
   (progn
@@ -112,8 +138,10 @@
               (let* ((time (format-time-string "%H:%M" (current-time)))
                      (timestamp (concat
                                  horizontal-tab
-                                 (propertize time 'face 'eshell-timestamp))))
-                (prog1 (concat timestamp "\n" page-break "\n")
+                                 (propertize time 'face 'eshell-timestamp)))
+                     (str (propertize (concat timestamp "\n" page-break "\n")
+                                      'read-only t)))
+                (prog1 str
                   (setq config-eshell--previous-time time))))))
 
     (add-hook 'eshell-mode-hook 'page-break-lines-mode)
@@ -182,25 +210,28 @@
           (spaces-count (/ (- (1+ (window-width))
                               pusheen-cols)
                            2))
-          (width (truncate (* (char-width space-char) spaces-count)))
-          (new-display-entry (vconcat (make-list width space-char))))
-    (unless (equal new-display-entry
-                   (elt buffer-display-table pad-control-char))
-      (aset buffer-display-table pad-control-char new-display-entry))))
+          (width (truncate (* (char-width space-char) spaces-count))))
+    (when (plusp width)
+      (let ((new-display-entry (vconcat (make-list width space-char))))
+        (unless (equal new-display-entry
+                       (elt buffer-display-table pad-control-char))
+          (aset buffer-display-table pad-control-char new-display-entry))))))
 
 (defun eshell-timestamp--update-display-table (window)
   (with-current-buffer (window-buffer window)
     (with-selected-window window
-      (page-break-lines--update-display-table window)
-      (unless buffer-display-table
-        (setq buffer-display-table (make-display-table)))
-      (config-eshell--align-timestamp)
-      (config-eshell--align-pusheen))))
+      (let ((inhibit-read-only t))
+        (page-break-lines--update-display-table window)
+        (unless buffer-display-table
+          (setq buffer-display-table (make-display-table)))
+        (config-eshell--align-timestamp)
+        (config-eshell--align-pusheen)))))
 
 (defun eshell-timestamp--update-display-tables  (&optional frame)
-  (unless (minibufferp)
-    (mapc 'eshell-timestamp--update-display-table
-          (window-list frame 'no-minibuffer))))
+  (dolist (window (window-list frame 'no-minibuffer))
+    (with-current-buffer (window-buffer window)
+      (when (derived-mode-p 'eshell-mode)
+        (eshell-timestamp--update-display-table window)))))
 
 (defun eshell-timestamp--configure-hooks ()
   (dolist (hook '(window-configuration-change-hook
@@ -209,6 +240,12 @@
     (add-hook hook 'eshell-timestamp--update-display-tables t t)))
 
 (add-hook 'eshell-mode-hook #'eshell-timestamp--configure-hooks)
+
+(defun config-eshell--inhibit-read-only (f &rest args)
+  (let ((inhibit-read-only t))
+    (apply f args)))
+
+(advice-add 'eshell-output-filter :around #'config-eshell--inhibit-read-only)
 
 
 
@@ -278,6 +315,22 @@
 
     ;; Use standard completing-read.
     (setq prodigy-completion-system 'default)))
+
+;; Custom command to for hydra eshell command
+
+(defun cb-eshell-at-dir (&optional arg)
+  "Open eshell. With ARG, change to buffer's directory."
+  (interactive "P")
+  (if-let* ((dir default-directory)
+            (eshell-buf (get-buffer "*eshell*")))
+      (with-current-buffer eshell-buf
+        (when arg
+          (let ((config-eshell--changing-dir-interactively t))
+            (eshell/cd dir)
+            (eshell-reset t)))
+        (pop-to-buffer eshell-buf))
+    (eshell)))
+
 
 (provide 'config-eshell)
 

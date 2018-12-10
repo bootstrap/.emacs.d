@@ -329,25 +329,27 @@
   "Goto"
   (("c" jump-to-config-file "config file...")
    ("i" jump-to-init-file "init file")
-   ("m" jump-to-messages "messages")
-   ("n" jump-to-nix-packages "nix packages"))
+   ("n" jump-to-nix-packages "nix packages")
+   ("?" jump-to-messages "messages"))
   ""
   (("p" jump-to-personal-config "personal config")
+   ("H" jump-to-host-file "host file")
    ("u" jump-to-package-usage "package usage"))
 
   "Git"
   (("s" magit-status "magit")
-   ("d" config-git-diff-buffer-file "blame")
-   ("b" git-blame/body "diff buffer...")
+   ("d" config-git-diff-buffer-file "diff buffer...")
+   ("b" magit-blame "blame...")
    ("f" config-git-find-file "find file..."))
   ""
   (("h" git-hunks/body "navigate hunks")
    ("l" magit-log-buffer-file "log buffer")
    ("t" git-time-machine/body "time machine"))
 
-  "Jump to Def"
-  (("g" dumb-jump-go "jump")
-   ("G" dumb-jump-go-other-window "jump other window")
+  "Symbol Definition"
+  (("g" jump-to-definition "symbol/type")
+   ("o" jump-to-definition-other-window "symbol/type (other window)")
+   ("m" lsp-goto-implementation "symbol implementation")
    ("SPC" pop-tag-mark "jump back")))
 
 (cb-hydra-define git-time-machine
@@ -410,7 +412,7 @@
    ("v" prodigy "services..."))
 
   "Shells"
-  (("t" eshell "terminal (eshell)")
+  (("t" cb-eshell-at-dir "terminal (eshell)")
    ("n" nix-repl-show "nix-repl")))
 
 (cb-hydra-define profiler ()
@@ -482,6 +484,7 @@
    (":" eval-expression "evaluate lisp")
    ("C" compile "compile")
    ("d" dired "dired")
+   ("D" dired-other-window "dired (other window)")
    ("r" ivy-resume "ivy-resume")
    ("u" universal-argument "universal argument"))
 

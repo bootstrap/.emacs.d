@@ -100,12 +100,20 @@
 
 ;; Load theme aggressively, or Emacs will look ugly during the startup sequence.
 (use-package config-themes
-  :functions (config-themes/light-theme)
+  :commands (config-themes/dark-theme)
+  :demand t
   :config
-  (config-themes/light-theme))
+  (config-themes/dark-theme))
 
 (use-package config-basic-settings)
-(use-package config-darwin :if (equal system-type 'darwin))
+
+(use-package config-darwin
+  :if (equal system-type 'darwin))
+
+(use-package config-nixos
+  :if (and (equal system-type 'gnu/linux)
+           (string-match-p "nixos" (f-read "/proc/version"))))
+
 (use-package config-modeline)
 (use-package config-editing)
 (use-package config-hydras)
@@ -124,8 +132,8 @@
 (use-package config-org)
 (use-package config-ledger)
 (use-package config-rust)
-(use-package config-ibuffer)
 (use-package config-dired)
+(use-package config-ibuffer)
 (use-package config-web-mode)
 (use-package config-markdown)
 (use-package config-restclient)
@@ -137,9 +145,14 @@
 (use-package config-treemacs)
 (use-package config-eshell)
 (use-package config-docker)
+(use-package config-lsp)
+(use-package config-java)
 
 (use-package personal-config
-  :load-path "~/Sync/emacs")
+  :load-path "~/Sync/personal-config")
+
+(when (file-exists-p paths-hostfile)
+  (load-file paths-hostfile))
 
 (unless user-full-name (warn "`user-full-name' not set"))
 (unless user-mail-address (warn "`user-mail-address' not set"))

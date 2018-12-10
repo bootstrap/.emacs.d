@@ -36,7 +36,20 @@
 (defconst paths-themes-directory
   (concat user-emacs-directory "themes"))
 
-(defconst paths-site-lisp-directory "~/.nix-profile/share/emacs/site-lisp")
+(defconst paths-site-lisp-directory
+  (seq-find #'file-directory-p
+            '("/run/current-system/sw/share/emacs/site-lisp"
+              "~/.nix-profile/share/emacs/site-lisp")))
+
+(defconst paths-hostfile
+  (let ((hostname (car (split-string (downcase (system-name)) (rx ".")))))
+    (format "~/Sync/personal-config/hostfile-%s.el" hostname)))
+
+(defconst paths-project-directories
+  (seq-filter #'file-directory-p '("~/Documents"
+                                   "~/Projects"
+                                   "~/Sync"
+                                   "~/workspace")))
 
 
 

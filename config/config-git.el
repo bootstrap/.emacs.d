@@ -46,11 +46,17 @@
           (user-error "Buffer isn't visiting a file"))))))
   :config
   (progn
-    (setq magit-repository-directories
-          '(("~/Documents" . 1)
-            ("~/Projects" . 1)
-            ("~/Sync" . 1)
-            ("~/workspace" . 1)))
+    (setq magit-repository-directories (--map (cons it 1) paths-project-directories))
+
+    (setq magit-blame-styles
+          '((margin
+             (margin-format    . (" %s%f" " %C %a" " %H"))
+             (margin-width     . 42)
+             (margin-face      . magit-blame-margin)
+             (margin-body-face . (magit-blame-dimmed)))
+            (headings
+             (heading-format   . "%-20a %C %s\n"))))
+
     (setq magit-display-buffer-function #'magit-display-buffer-fullframe-status-v1)
     (setq magit-log-section-commit-count 0)))
 
@@ -165,14 +171,14 @@
     (defconst config-git-jira-projects '("CAPPS"))
 
     (pretty-magit-add-leader
-     (rx-to-string `(group (+ space) (or ,@config-git-jira-projects) "-" (+ digit)))
+     (rx-to-string `(group (+ space) (or ,@config-git-jira-projects) "-" (+ digit) symbol-end))
      nil '(face magit-hash)
      '(magit-log-mode))
 
     (pretty-magit-add-leader (rx ":lipstick:") ?
                              '(:foreground "grey60" :height 1.2))))
 
-;; VC annotate happens to be a nice way to file changes.
+;; VC annotate happens to be a nice way to view file changes.
 
 (use-package vc-annotate
   :commands (vc-annotate)

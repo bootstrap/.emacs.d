@@ -192,7 +192,10 @@
   (advice-add 'lv-window :after #'cb-leader-keys-set-up-hydra-buffer))
 
 (use-package pretty-hydra
-  :straight (:host github :repo "chrisbarrett/major-mode-hydra.el")
+  :straight (:host github
+             :repo "chrisbarrett/major-mode-hydra.el"
+             :fork (:host github
+                    :repo "jerrypnz/major-mode-hydra.el"))
   :preface
   (defun config-themes--head-formatting-function (key &optional hint)
     (cond
