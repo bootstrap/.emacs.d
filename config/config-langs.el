@@ -5,6 +5,10 @@
 (eval-when-compile
   (require 'use-package))
 
+(use-package poporg
+  :straight t
+  :commands (poporg-dwim))
+
 (use-package csv-mode
   :straight t
   :mode ("\\.csv\\'" . csv-mode)
@@ -12,6 +16,15 @@
   (defun config-langs--suppress-final-newline ()
     (setq-local require-final-newline nil))
   :config (add-hook 'csv-mode-hook #'config-langs--suppress-final-newline))
+
+(use-package make-mode
+  :preface
+  (defun config-langs--set-up-makefile-mode ()
+    (setq-local tab-width 8)
+    (setq-local indent-tabs-mode t))
+  :init
+  (add-hook 'makefile-mode-hook #'config-langs--set-up-makefile-mode))
+
 
 (use-package groovy-mode
   :straight t
@@ -45,6 +58,13 @@
   :config
   (add-hook 'yaml-mode-hook #'config-langs--disable-autofill))
 
+(use-package lua-mode
+  :straight t
+  :mode ("\\.lua\\'" . lua-mode)
+  :interpreter ("lua" . lua-mode)
+  :config
+  (general-setq lua-indent-level 2))
+
 (use-package rmsbolt
   :straight
   (:host gitlab :repo "jgkamat/rmsbolt")
@@ -58,6 +78,29 @@
 
   :config
   (advice-add 'rmsbolt--hs-compile-cmd :around #'config-langs--override-haskell-compile-command))
+
+(use-package pdf-tools
+  :straight t
+  :mode ("\\.[pP][dD][fF]\\'" . pdf-view-mode)
+  :config
+  (progn
+    (pdf-tools-install)
+    (general-setq pdf-view-display-size 'fit-page
+                  pdf-annot-activate-created-annotations t)))
+
+(use-package pass
+  :straight (:host github :repo "NicolasPetton/pass")
+  :commands (pass)
+  :general
+  (:states '(normal) :keymaps 'pass-view-mode-map "q" #'kill-this-buffer)
+  :init
+  (add-to-list 'display-buffer-alist
+               `(,(rx bos "*Password-Store*" eos)
+                 (display-buffer-reuse-window
+                  display-buffer-fullframe)
+                 (reusable-frames . visible)))
+  :config
+  (require 'pass-hacks))
 
 (provide 'config-langs)
 

@@ -11,6 +11,10 @@
 
 
 
+(use-package walrus-arabic
+  :config
+  (setq default-input-method "walrus-arabic"))
+
 ;; Auto-indent on RET
 
 (general-define-key :keymaps '(text-mode-map prog-mode-map)
@@ -112,6 +116,13 @@ Interactively, reverse the characters in the current region."
 
 
 
+;; Teach Emacs to respect editorconfig files.
+
+(use-package editorconfig
+  :straight t
+  :config
+  (editorconfig-mode 1))
+
 ;; Configure conf-mode for use with more kinds of config files.
 
 (use-package conf-mode
@@ -161,6 +172,7 @@ Interactively, reverse the characters in the current region."
   :init
   (general-setq aggressive-indent-excluded-modes
                 '(cb-web-js-mode
+                  csharp-mode
                   diff-auto-refine-mode
                   dockerfile-mode
                   fstar-mode

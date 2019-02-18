@@ -12,9 +12,13 @@
 (global-set-key (kbd "s-w") 'delete-frame)
 (global-unset-key (kbd "s-p"))
 (global-unset-key (kbd "s-t"))
+(global-set-key (kbd "s-q") 'delete-frame)
 
 (global-unset-key (kbd "<f11>"))
 (global-set-key (kbd "<s-return>") #'toggle-frame-fullscreen)
+
+(set-frame-parameter (selected-frame) 'alpha '(97 80))
+(add-to-list 'default-frame-alist '(alpha 97 80))
 
 (add-to-list 'default-frame-alist '(ns-transparent-titlebar . t))
 (add-to-list 'default-frame-alist '(ns-appearance . nil))
@@ -28,7 +32,6 @@
 
 (use-package exec-path-from-shell
   :straight t
-  :if window-system
   :preface
   (declare-function exec-path-from-shell-initialize "config-darwin")
   :init

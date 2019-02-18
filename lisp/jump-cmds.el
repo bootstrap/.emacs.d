@@ -18,6 +18,7 @@
 (autoload 'dumb-jump-go "dumb-jump")
 (autoload 'dumb-jump-go-other-window "dumb-jump")
 (autoload 'lsp-ui-peek-find-definitions "lsp-methods")
+(autoload 'projectile-find-file "config-projectile")
 
 (autoload 'find-library-name "find-func")
 
@@ -38,10 +39,16 @@
   (interactive)
   (jump-cmds--jump-to-file paths-hostfile))
 
-(defun jump-to-nix-packages ()
-  "Open the nix packages file."
+(defun jump-to-nix-config ()
+  "Open a nix config file."
   (interactive)
-  (jump-cmds--jump-to-file "~/Sync/nix/packages.nix"))
+  (let ((default-directory "~/nix"))
+    (projectile-find-file)))
+
+(defun jump-to-nix-system-config ()
+  "Open the nix system config file."
+  (interactive)
+  (jump-cmds--jump-to-file (format "~/nix/%s.nix" (hostname))))
 
 (defun jump-to-personal-config ()
   "Open the personal configuration file."

@@ -25,15 +25,16 @@
 
 
 
-(cb-major-mode-hydra-define org-mode
-  "Tree"
-  (("a" org-archive-subtree "archive")
-   ("r" org-refile "refile")
-   ("t" org-show-todo-tree "todo tree"))
+(with-no-warnings
+  (cb-major-mode-hydra-define org-mode
+    "Tree"
+    (("a" org-archive-subtree "archive")
+     ("r" org-refile "refile")
+     ("t" org-show-todo-tree "todo tree"))
 
-  "Misc"
-  (("e" org-babel/body "babel commands")
-   ("p" org-present "present")))
+    "Misc"
+    (("e" org-babel/body "babel commands")
+     ("p" org-present "present"))))
 
 
 ;; forward-definitions to silence byte-compiler.
@@ -69,7 +70,6 @@
  org-hierarchical-todo-statistics nil
  org-indirect-buffer-display 'current-window
  org-insert-heading-respect-content t
- org-link-abbrev-alist '(("att" . org-attach-expand-link))
  org-log-done 'time
  org-log-into-drawer t
  org-log-repeat nil
@@ -151,6 +151,7 @@
  org-agenda-skip-scheduled-if-done t
  org-agenda-span 'week
  org-agenda-start-on-weekday nil
+ org-agenda-window-setup 'only-window
  org-agenda-dim-blocked-tasks 'invisible
  org-agenda-sorting-strategy '((agenda time-up priority-down category-keep)
                                (todo priority-down category-keep scheduled-up)
@@ -160,7 +161,46 @@
  org-agenda-inhibit-startup t
  org-agenda-tags-column -100
  org-agenda-text-search-extra-files '(agenda-archives)
- org-agenda-use-time-grid nil)
+ org-agenda-use-time-grid nil
+ org-agenda-category-icon-alist `(("Emacs"
+                                   ,(list (all-the-icons-fileicon "emacs" :height 0.8 :v-adjust 0.05))
+                                   nil nil
+                                   :ascent center)
+                                  ("projects?"
+                                   ,(list (all-the-icons-octicon "repo" :v-adjust 0.05))
+                                   nil
+                                   nil
+                                   :ascent center)
+                                  ("goals?"
+                                   ,(list (all-the-icons-octicon "checklist" :v-adjust 0.05))
+                                   nil
+                                   nil
+                                   :ascent center)
+                                  ("car"
+                                   ,(list (all-the-icons-material "directions_car"))
+                                   nil
+                                   nil
+                                   :ascent center)
+                                  ("gtd"
+                                   ,(list (all-the-icons-faicon "check-square-o" :v-adjust 0.05))
+                                   nil
+                                   nil
+                                   :ascent center)
+                                  (,(rx (or "Holiday" "Birthday"))
+                                   ,(list (all-the-icons-faicon "calendar-o" :v-adjust 0.05))
+                                   nil
+                                   nil
+                                   :ascent center)
+                                  (,(rx (or "flat" "bill" "income"))
+                                   ,(list (all-the-icons-material "monetization_on"))
+                                   nil
+                                   nil
+                                   :ascent center)
+                                  ("notes"
+                                   ,(list (all-the-icons-faicon "tasks" :height 0.9 :v-adjust 0.05))
+                                   nil
+                                   nil
+                                   :ascent center)))
 
 (general-setq org-agenda-custom-commands
               '(("A" "Agenda and next actions"
@@ -180,6 +220,24 @@
                              ((org-agenda-overriding-header "Media & Study"))))
                  ((org-agenda-tag-filter-preset '("-ignore"))
                   (org-agenda-files (list org-default-notes-file org-agenda-diary-file))
+                  (org-agenda-archives-mode nil)
+                  (org-agenda-ignore-drawer-properties '(effort appt))))
+
+                ("w" "Work actions"
+                 ((tags-todo "-study-someday-media-gtd/TODO"
+                             ((org-agenda-overriding-header "Next Actions")
+                              (org-agenda-skip-function (lambda ()
+                                                          (or (config-org--agenda-skip-if-has-timestamp)
+                                                              (config-org--agenda-skip-all-siblings-but-first))))))
+                  (todo "WAITING"
+                        ((org-agenda-overriding-header "Waiting")))
+                  (stuck "")
+                  (agenda "")
+                  (tags "+standup"
+                        ((org-agenda-overriding-header "Standup"))))
+                 ((org-agenda-tag-filter-preset '("-ignore"))
+                  (org-agenda-use-tag-inheritance nil)
+                  (org-agenda-files (list config-org-work-file org-agenda-diary-file))
                   (org-agenda-archives-mode nil)
                   (org-agenda-ignore-drawer-properties '(effort appt))))
 
@@ -224,116 +282,96 @@
                    '("-gtd" "-ignore"))
                   (org-agenda-include-inactive-timestamps t)
                   (org-agenda-files (list org-default-notes-file config-org-work-file org-agenda-diary-file))
-                  (org-agenda-archives-mode nil)))
+                  (org-agenda-archives-mode nil)))))
 
-                ("w" "Work actions"
-                 ((tags-todo "-study-someday-media-gtd/TODO"
-                             ((org-agenda-overriding-header "Next Actions")
-                              (org-agenda-skip-function (lambda ()
-                                                          (or (config-org--agenda-skip-if-has-timestamp)
-                                                              (config-org--agenda-skip-all-siblings-but-first))))))
-                  (todo "WAITING"
-                        ((org-agenda-overriding-header "Waiting")))
-                  (stuck "")
-                  (agenda "")
-                  (tags "+standup"
-                        ((org-agenda-overriding-header "Standup"))))
-                 ((org-agenda-tag-filter-preset '("-ignore"))
-                  (org-agenda-use-tag-inheritance nil)
-                  (org-agenda-files (list config-org-work-file org-agenda-diary-file))
-                  (org-agenda-archives-mode nil)
-                  (org-agenda-ignore-drawer-properties '(effort appt))))))
+(defun config-org-agenda-open-nth-view (n)
+  (when-let ((choice (car (nth n org-agenda-custom-commands))))
+    (org-agenda nil choice)))
+
+(defun config-org-agenda-nth-name (n)
+  (or (cadr (nth n org-agenda-custom-commands))
+      ""))
+
+(pretty-hydra-define config-org-agenda
+  (:hint nil :foreign-keys run :quit-key "q"
+   :body-pre (config-org-agenda-open-nth-view 0)
+   :post (org-agenda-quit))
+  ("Agenda Views"
+   (("1" (config-org-agenda-open-nth-view 0) (config-org-agenda-nth-name 0))
+    ("2" (config-org-agenda-open-nth-view 1) (config-org-agenda-nth-name 1))
+    ("3" (config-org-agenda-open-nth-view 2) (config-org-agenda-nth-name 2)))))
 
 
 ;; org-capture templates
 
+(autoload 'cb-org-team-log-heading "cb-org-team")
+
 (general-setq org-capture-templates
               (cl-labels ((entry
                            (key label form template
-                                &rest kws
                                 &key
+                                immediate-finish
+                                jump-to-captured
                                 (type 'entry)
                                 (prepend t)
                                 (clock-keep t)
-                                (empty-lines 1)
-                                &allow-other-keys)
-                           (append
-                            (list key label type form template
-                                  :clock-keep clock-keep
-                                  :empty-lines empty-lines
-                                  :prepend prepend)
-                            kws)))
+                                (empty-lines 1))
+                           (list key label type form template
+                                 :clock-keep clock-keep
+                                 :empty-lines empty-lines
+                                 :prepend prepend
+                                 :immediate-finish immediate-finish
+                                 jump-to-captured :jump-to-captured)))
                 (list
                  (entry
-                  "t" "Todo"
-                  '(file org-default-notes-file) "* TODO %?")
-
+                  "t" "Todo" '(file org-default-notes-file) "* TODO %?")
                  (entry
-                  "T" "Todo (work)"
-                  `(file ,config-org-work-file) "* TODO %?")
-
+                  "s" "Someday" '(file+olp org-default-notes-file "Someday")
+                  "* SOMEDAY %?")
                  (entry
-                  "d" "Diary"
-                  '(file+datetree org-agenda-diary-file) "* %?\n%^t")
-
-                 (entry
-                  "D" "Diary (work)"
-                  `(file+datetree config-org-work-file) "* %?\n%^t")
-
-                 (entry
-                  "l" "Link"
-                  '(file+olp org-default-notes-file "Links")
-                  '(function cb-org-capture-url-read-url)
+                  "l" "Link" '(file+olp org-default-notes-file "Links") '(function cb-org-capture-url-read-url)
                   :immediate-finish t)
-
                  (entry
-                  "L" "Link (work)"
+                  "r" "Reading" '(file+olp org-default-notes-file "Media" "Reading")
+                  "* MAYBE Read %i%?")
+                 (entry
+                  "R" "Recipe" '(file+olp org-default-notes-file "Recipes") '(function org-chef-get-recipe-from-url)
+                  :jump-to-captured t
+                  :immediate-finish t)
+                 (entry
+                  "m" "Listening" '(file+olp org-default-notes-file "Media" "Listening")
+                  "* MAYBE Listen to %i%?")
+                 (entry
+                  "v" "Viewing" '(file+olp org-default-notes-file "Media" "Viewing")
+                  "* MAYBE Watch %i%?")
+                 (entry
+                  "e" "Email task" '(file org-default-notes-file)
+                  "* TODO %?\n%a")
+
+                 '("w" "Work")
+                 (entry
+                  "wa" "Team member activity"
+                  '(file+function config-org-work-file cb-org-team-log-heading)
+                  "- %?"
+                  :type 'item
+                  :jump-to-captured t)
+                 (entry
+                  "wt" "Todo"
+                  `(file ,config-org-work-file) "* TODO %?")
+                 (entry
+                  "wl" "Link"
                   `(file+olp config-org-work-file "Links")
                   '(function cb-org-capture-url-read-url)
                   :immediate-finish t)
-
                  (entry
-                  "J" "Jira issue reference (work)"
+                  "wj" "Jira issue reference"
                   `(file config-org-work-file)
                   '(function jira-utils-read-issue-url-for-org-header)
                   :jump-to-captured t
                   :immediate-finish t
                   :type 'item)
-
                  (entry
-                  "K" "Kanban issue reference (work)"
-                  `(file+olp config-org-work-file "Rumble Kanban")
-                  '(function jira-utils-read-issue-url-for-org-header)
-                  :jump-to-captured t
-                  :immediate-finish t
-                  :type 'item)
-
-                 (entry
-                  "s" "Someday"
-                  '(file+olp org-default-notes-file "Someday")
-                  "* SOMEDAY %?")
-
-                 (entry
-                  "m" "Listening"
-                  '(file+olp org-default-notes-file "Media" "Listening")
-                  "* MAYBE Listen to %i%?")
-
-                 (entry
-                  "v" "Viewing"
-                  '(file+olp org-default-notes-file "Media" "Viewing")
-                  "* MAYBE Watch %i%?")
-
-                 (entry
-                  "r" "Reading"
-                  '(file+olp org-default-notes-file "Media" "Reading")
-                  "* MAYBE Read %i%?")
-
-                 (entry
-                  "e" "Email task"
-                  '(file org-default-notes-file) "* TODO %?\n%a")
-
-                 (entry
-                  "E" "Email task (work)"
+                  "we" "Email task"
                   `(file config-org-work-file) "* TODO %?\n%a"))))
 
 
@@ -399,6 +437,9 @@
                               (nth 2 (org-heading-components)))
               (org-todo "TODO"))))))
 
+    (defun config-org--set-bidi-env ()
+      (setq bidi-paragraph-direction nil))
+
     (defun config-org--add-local-hooks ()
       "Set buffer-local hooks for orgmode."
       (add-hook 'org-after-todo-state-change-hook #'config-org--mark-next-parent-tasks-todo nil t)
@@ -415,6 +456,7 @@
   :init
   (progn
     (add-hook 'org-mode-hook #'config-org--add-local-hooks)
+    (add-hook 'org-mode-hook #'config-org--set-bidi-env)
     (add-hook 'org-after-todo-statistics-hook #'config-org--children-done-parent-done)
 
     (dolist (dir (ignore-errors (f-directories "~/org/lisp/")))
@@ -455,7 +497,6 @@
 (use-package org-agenda
   :after org
   :general
-  ("C-c a" #'org-agenda)
   (:keymaps 'org-agenda-mode-map :states 'motion
    "t" #'org-agenda-todo
    "J" #'org-agenda-goto-date
@@ -743,6 +784,10 @@
   ;; Remove weird keybindings.
   (general-unbind :states '(normal insert) :keymaps 'evil-org-mode-map
     "M-l" "M-h" "J" "O" "M-l" "M-h"))
+
+(use-package org-chef
+  :straight t
+  :commands (org-chef-get-recipe-from-url))
 
 
 

@@ -76,12 +76,14 @@
 ;; General settings.
 
 (setq-default fill-column 80)
+
 (setq-default indent-tabs-mode nil)
+
 (setq-default sentence-end-double-space t)
 
 ;; Show eshell as default buffer, unless Emacs was opened to edit a file
-;; directly.
-(unless (< 1 (length command-line-args))
+;; directly or as a daemon.
+(unless (or (daemonp) (< 1 (length command-line-args)))
   (general-setq initial-buffer-choice #'eshell))
 
 (general-setq
@@ -278,7 +280,7 @@
                                                     ".ensime_cache/"
                                                     ,@completion-ignored-extensions)
                                                 eos))))
-        (--remove (string-match-p matches-boring it) result))
+        (--remove (and (stringp it) (string-match-p matches-boring it)) result))
     result))
 
 (advice-add #'completion--file-name-table :filter-return #'config-basic-settings--hide-boring-files-in-completion)
@@ -440,6 +442,7 @@
    recentf-max-saved-items 1000
    recentf-exclude '(config-basic-settings--boring-filename-p
                      config-basic-settings--boring-extension-p
+                     file-remote-p
                      config-basic-settings--sudo-file-p
                      config-basic-settings--child-of-boring-relative-dir-p
                      config-basic-settings--child-of-boring-abs-dir-p)))
@@ -614,6 +617,11 @@
   :defer t
   :config
   (general-setq Info-fontify-angle-bracketed-flag nil))
+
+(use-package direnv
+  :straight t
+  :config
+  (direnv-mode))
 
 (use-package ediff
   :defer t

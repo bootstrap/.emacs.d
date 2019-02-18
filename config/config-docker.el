@@ -3,8 +3,7 @@
 ;;; Code:
 
 (eval-when-compile
-  (require 'use-package)
-  (require 'lsp-mode nil t))
+  (require 'use-package))
 
 ;; dockerfile-mode provides a major mode for docker files.
 
@@ -66,26 +65,21 @@
    "d" 'docker-volume-dired-selection
    "l" 'docker-volume-ls-popup))
 
-;; configure LSP support for dockerfiles.
-
-(defconst lsp-dockerfile-server "docker-langserver")
-
-(with-eval-after-load 'lsp-mode
-  (lsp-define-stdio-client lsp-dockerfile
-                           "Docker"
-                           (lambda () default-directory)
-                           (list lsp-dockerfile-server "--stdio"))
-  (add-hook 'dockerfile-mode-hook #'lsp-dockerfile-enable))
-
-
 
+
+(autoload 'docker "docker")
+(autoload 'docker-containers "docker-container")
+(autoload 'docker-images "docker-image")
+(autoload 'docker-volumes "docker-image")
+(autoload 'eshell-external-command "esh-ext")
+(autoload 'eshell-flatten-list "esh-util")
 
 (defun eshell/docker (&rest args)
   (let ((args (eshell-flatten-list args)))
     (pcase (car args)
       ("ps" (docker-containers))
       ((or "image" "images") (docker-images))
-      ((or "volume" "volumes") (docker-images))
+      ((or "volume" "volumes") (docker-volumes))
       ((guard (null args))
        (docker))
       (_

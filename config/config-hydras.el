@@ -109,7 +109,7 @@
 
   "Manage"
   (("b" bury-buffer "bury")
-   ("d" kill-this-buffer "kill")
+   ("d" kill-current-buffer "kill")
    ("w" save-buffer "save")
    ("v" reload-file "reload")))
 
@@ -226,7 +226,7 @@
 
   "Goto"
   (("$" (find-file ledger-master-file) "ledger")
-   ("a" cb-org-goto-agenda "agenda")
+   ("a" config-org-agenda/body "agenda")
    ("d" cb-org-goto-diary "diary")
    ("j" cb-org-goto-journal "journal")
    ("n" cb-org-goto-notes "notes"))
@@ -329,7 +329,8 @@
   "Goto"
   (("c" jump-to-config-file "config file...")
    ("i" jump-to-init-file "init file")
-   ("n" jump-to-nix-packages "nix packages")
+   ("n" jump-to-nix-config "nix config file")
+   ("S" jump-to-nix-system-config "nix system config")
    ("?" jump-to-messages "messages"))
   ""
   (("p" jump-to-personal-config "personal config")
@@ -400,11 +401,11 @@
   (("c" quick-calc "quick calc...")
    ("C" full-calc "calc")
    ("m" mu4e "mu4e")
-   ("p" generate-password/body "gen password...")
+   ("p" pass "password-store")
    ("w" world-time-list "world clock"))
 
   "Editing"
-  (("i" select-input-method/body "input method..."))
+  (("i" toggle-input-method "toggle input method"))
 
   "Emacs"
   (("r" profiler/body "profiler...")
@@ -421,13 +422,6 @@
   (("p" profiler-start "start...")
    ("s" profiler-stop "stop")
    ("r" profiler-report "report")))
-
-(cb-hydra-define select-input-method ()
-  (hydra-title-with-faicon "language" "Input Method")
-  ""
-  (("a" (progn (set-input-method "arabic") (message "Arabic input method activated")) "arabic")
-   ("t" (progn (set-input-method "TeX") (message "TeX input method activated")) "TeX")
-   ("SPC" (progn (deactivate-input-method) (message "Input method cleared")) "clear")))
 
 (cb-hydra-define straight ()
   (hydra-title-with-octicon "package" "Straight Package Manager")
@@ -482,6 +476,7 @@
    ("!" shell-command "run shell command")
    ("/" counsel-projectile-rg "search project")
    (":" eval-expression "evaluate lisp")
+   ("'" poporg-dwim "edit comment...")
    ("C" compile "compile")
    ("d" dired "dired")
    ("D" dired-other-window "dired (other window)")

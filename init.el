@@ -14,7 +14,6 @@
 
 (setenv "INSIDE_EMACS" "true")
 
-
 ;; Make sure package.el doesn't get a chance to load anything.
 
 (setq package-enable-at-startup nil)
@@ -100,10 +99,14 @@
 
 ;; Load theme aggressively, or Emacs will look ugly during the startup sequence.
 (use-package config-themes
-  :commands (config-themes/dark-theme)
+  :commands (config-themes-set-for-time-of-day)
   :demand t
   :config
-  (config-themes/dark-theme))
+  (progn
+    (when (equal system-type 'darwin)
+      (config-themes-set-for-time-of-day))
+
+    (add-hook 'before-make-frame-hook #'config-themes-set-for-time-of-day)))
 
 (use-package config-basic-settings)
 
@@ -147,6 +150,7 @@
 (use-package config-docker)
 (use-package config-lsp)
 (use-package config-java)
+(use-package config-csharp)
 
 (use-package personal-config
   :load-path "~/Sync/personal-config")
