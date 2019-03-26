@@ -5,6 +5,8 @@
 (eval-when-compile
   (require 'use-package))
 
+(require 'lsp-mode-hacks)
+
 (defvar lsp-dockerfile-server "docker-langserver")
 
 (use-package lsp-mode
@@ -20,17 +22,38 @@
          (python . lsp)
          (rust-mode . lsp)
          (sh-mode . lsp)
-         (web-mode . lsp))
+         (web-js-mode . lsp)
+         (web-ts-mode . lsp))
+  :preface
+  (defun config-lsp--setup-buffer ()
+    (setq-local evil-lookup-func #'lsp-describe-thing-at-point)
+
+    ;; Use server highlighting.
+    (when (gethash "documentHighlightProvider" (lsp--server-capabilities))
+      (highlight-thing-mode -1))
+
+    ;; Format on save.
+    (when (gethash "documentFormattingProvider" (lsp--server-capabilities))
+      (add-hook 'before-save-hook #'lsp-format-buffer nil t)))
+
+  :init
+  (progn
+    (setq lsp-prefer-flymake nil)
+    (setq lsp-enable-on-type-formatting nil)
+    (setq lsp-session-file (f-join paths-cache-directory "lsp-session-v1")))
+
   :config
   (progn
+    (add-hook 'lsp-after-open-hook #'config-lsp--setup-buffer)
+
+    ;; Add custom LSP clients.
+
     (lsp-register-client
      (make-lsp-client :new-connection (lsp-stdio-connection (format "%s --stdio" lsp-dockerfile-server))
                       :major-modes '(dockerfile-mode)
                       :server-id 'dockerfile))))
 
 (use-package lsp-java
-  ;; TODO: re-enable once the library is updated to use latest lsp API.
-  :disabled t
   :straight t
   :preface
   (defun config-lsp--java-mode-setup ()
@@ -53,6 +76,7 @@
 
 (use-package lsp-ui
   :straight t
+  :after lsp-mode
   :hook (lsp-mode . lsp-ui-mode)
   :config
   (progn
@@ -64,6 +88,10 @@
     (define-key lsp-ui-mode-map [remap evil-lookup] #'lsp-describe-thing-at-point)
     (define-key lsp-ui-mode-map [remap xref-find-definitions] #'lsp-ui-peek-find-definitions)
     (define-key lsp-ui-mode-map [remap xref-find-references] #'lsp-ui-peek-find-references)))
+
+(use-package lsp-ui-flycheck
+  :after lsp-mode
+  :hook (lsp-after-open . lsp-ui-flycheck-enable))
 
 (provide 'config-lsp)
 

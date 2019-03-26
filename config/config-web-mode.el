@@ -11,7 +11,6 @@
 (require 'nvm-hacks)
 (require 's)
 (require 'subr-x)
-(require 'tide-hacks)
 
 (autoload 'flycheck-add-mode "flycheck")
 (autoload 'projectile-project-p "projectile")
@@ -24,6 +23,7 @@
            (("ro" js-refactor-commands-organize-imports "organise imports")
             ("ra" js-refactor-commands-align-object-literal-values "align object values")
             ("re" js-refactor-commands-expand-comma-bindings "expand comma bindings")
+            ("rr" lsp-rename "rename...")
             ("rs" js-refactor-commands-toggle-sealed-object-type "toggle sealed type"))
            "Test"
            (("t" js-test-commands-test-this-file-dwim "test file")))))

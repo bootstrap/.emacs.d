@@ -7,6 +7,7 @@
 
 (require 'all-the-icons)
 (require 'buffer-cmds)
+(require 'capture-arabic)
 (require 'dash)
 (require 'jump-cmds)
 (require 'major-mode-hydra)
@@ -94,9 +95,9 @@
 (cb-hydra-define font-scale (:color amaranth)
   (hydra-title-with-faicon "search-plus" "Font Scale")
   ""
-  (("+" (text-scale-increase 1) "zoom in")
-   ("-" (text-scale-decrease 1) "zoom out")
-   ("0" (text-scale-set 0) "reset")))
+  (("+" (default-text-scale-increase) "zoom in")
+   ("-" (default-text-scale-decrease) "zoom out")
+   ("0" (default-text-scale-reset) "reset")))
 
 (cb-hydra-define buffers ()
   (hydra-title-with-faicon "files-o" "Buffer Commands")
@@ -414,7 +415,10 @@
 
   "Shells"
   (("t" cb-eshell-at-dir "terminal (eshell)")
-   ("n" nix-repl-show "nix-repl")))
+   ("n" nix-repl-show "nix-repl"))
+
+  "Anki"
+  (("a" capture-arabic/body "arabic...")))
 
 (cb-hydra-define profiler ()
   (hydra-title-with-faicon "bar-chart" "Profiler")

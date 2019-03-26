@@ -101,6 +101,11 @@
  org-export-exclude-tags '("noexport" "no_export" "crypt")
  org-export-coding-system 'utf-8
 
+ ;; latex
+
+ org-latex-compiler "tectonic"
+ org-latex-pdf-process '("tectonic --outdir %o %f")
+
  ;; org-habit
 
  org-habit-graph-column 68
@@ -321,7 +326,7 @@
                                  :empty-lines empty-lines
                                  :prepend prepend
                                  :immediate-finish immediate-finish
-                                 jump-to-captured :jump-to-captured)))
+                                 :jump-to-captured jump-to-captured)))
                 (list
                  (entry
                   "t" "Todo" '(file org-default-notes-file) "* TODO %?")
@@ -389,7 +394,7 @@
   (defconst cb-org-load-path (expand-file-name "straight/build/org/" user-emacs-directory)))
 
 (use-package org
-  :straight org-plus-contrib
+  :straight t
   :defer t
   :load-path cb-org-load-path
   :general
@@ -485,6 +490,7 @@
     (advice-add 'org-add-log-note :before #'config-org--exit-minibuffer)
     (advice-add 'org-toggle-heading :after #'config-org--toggle-heading-goto-eol)))
 
+(use-package capture-arabic :after org)
 (use-package cb-org-capture-url :after org)
 (use-package cb-org-gdrive :hook (org-mode . cb-org-gdrive-init))
 (use-package cb-org-pgp-decrpyt :hook (org-mode . cb-org-pgp-decrpyt-init))
@@ -611,6 +617,9 @@
 
   :config
   (progn
+    (setf (alist-get "js" org-src-lang-modes) 'web-js)
+    (setf (alist-get "ts" org-src-lang-modes) 'web-ts)
+    (setf (alist-get "json" org-src-lang-modes) 'web-json)
     (add-hook 'org-src-mode-hook #'config-org--suppress-final-newline)
     (advice-add 'org-edit-src-exit :before #'config-org--org-src-delete-trailing-space)))
 
