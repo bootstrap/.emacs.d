@@ -89,6 +89,7 @@
     (setq ivy-count-format "(%d/%d) ")
     (setq ivy-re-builders-alist '((t . ivy--regex-plus)))
     (setq ivy-magic-slash-non-match-action nil)
+    (setq ivy-height 20)
 
     ;; Do not show extra directories when finding files.
     (setq ivy-extra-directories '("."))
@@ -108,6 +109,19 @@
     (setq ivy-flx-limit 2000)
 
     (ivy-mode)))
+
+;; ivy-posframe shows ivy in a child frame.
+
+(use-package ivy-posframe
+  :straight t
+  :hook (ivy-mode . ivy-posframe-enable)
+  :config
+  (general-setq ivy-display-function #'ivy-posframe-display-at-frame-center
+                ivy-posframe-border-width 20
+                ivy-posframe-width 120
+                ivy-posframe-height 20
+                ivy-posframe-hide-minibuffer t
+                ivy-posframe-parameters '((alpha 100 100))))
 
 ;; flx is used as the fuzzy-matching indexer backend for ivy.
 
@@ -138,10 +152,8 @@
             "C-h" #'counsel-up-directory)
   :config
   (progn
-    (setq counsel-yank-pop-separator
-          (propertize "\n-------------------------------------------------\n"
-                      'face '(:foreground "gray50")))
-
+    (setq counsel-yank-pop-separator (concat "\n" (make-vector 120 ?─) "\n"))
+    (setf (alist-get 'counsel-yank-pop ivy-height-alist) 20)
     (counsel-mode +1)))
 
 ;; historian remembers your choices in completion menus.

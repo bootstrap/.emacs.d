@@ -92,7 +92,7 @@
     (add-hook 'after-save-hook #'config-flycheck--check-all-project-buffers)
 
     (setq flycheck-display-errors-function 'config-flycheck-display-error-messages)
-    (setq flycheck-display-errors-delay 0.5)
+    (setq flycheck-display-errors-delay 0.1)
     (setq flycheck-emacs-lisp-load-path 'inherit)
     (setq flycheck-python-pycompile-executable "python")
 
@@ -135,6 +135,26 @@
   (progn
     (setq checkdoc-force-docstrings-flag nil)
     (setq checkdoc-arguments-in-order-flag nil)))
+
+;; flycheck-posframe shows flycheck errors in a child frame.
+
+(use-package flycheck-posframe
+  :after flycheck
+  :straight t
+  :commands (flycheck-posframe-mode)
+  :preface
+  (defun config-flycheck--maybe-enable-posframe ()
+    (unless (bound-and-true-p lsp-ui-mode)
+      (flycheck-posframe-mode +1)))
+
+  :hook (flycheck-mode . config-flycheck--maybe-enable-posframe)
+  :init
+  (require 'flycheck-posframe-hacks)
+  :config
+  (progn
+    (setq flycheck-posframe-override-parameters '((alpha 100 100)))
+    (flycheck-posframe-configure-pretty-defaults)))
+
 
 (provide 'config-flycheck)
 

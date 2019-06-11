@@ -107,6 +107,24 @@
     (region
      ((t :background ,region-bg)))
 
+    (flycheck-posframe-background-face
+     ((t :inherit region)))
+
+    (lsp-ui-sideline-global
+     ((t :foreground ,dimmed-fg)))
+
+    (lsp-ui-sideline-symbol-info
+     ((t)))
+
+    (lsp-ui-sideline-current-symbol
+     ((t :box (:line-width -1 :color ,emphasis))))
+
+    (lsp-face-highlight-read
+     ((t :inherit highlight-thing)))
+
+    (lsp-ui-sideline-symbol
+     ((t)))
+
     (hl-line
      ((t :background ,subtle-bg)))
 
@@ -349,6 +367,14 @@
     (ivy-current-match
      ((t :foreground ,emphasis :background ,region-bg)))
 
+    (ivy-separator
+     ((t :foreground ,dimmed-fg)))
+
+    (ivy-posframe
+     ((t
+       :background ,default-bg
+       :foreground ,default-fg)))
+
     ;; Highlights
 
     (highlight
@@ -441,12 +467,7 @@
      ((t :background ,subtle-bg)))
 
     (magit-diff-context-highlight
-     ((((background light))
-       :background "grey90"
-       :foreground "grey50")
-      (((background dark))
-       :background "grey20"
-       :foreground "grey70")))
+     ((t :background ,subtle-bg)))
 
     (magit-popup-disabled-argument
      ((t :foreground ,mid-grey)))

@@ -44,7 +44,13 @@
 
   :config
   (progn
+    ;; HACK: Load this early so that patches work correcly.
+    (when (and lsp-auto-configure lsp-auto-require-clients)
+      (require 'lsp-clients))
+
     (add-hook 'lsp-after-open-hook #'config-lsp--setup-buffer)
+
+    (define-key lsp-mode-map (kbd "C-c SPC") #'lsp-execute-code-action)
 
     ;; Add custom LSP clients.
 
@@ -76,11 +82,32 @@
 
 (use-package lsp-ui
   :straight t
-  :after lsp-mode
-  :hook (lsp-mode . lsp-ui-mode)
+  :preface
+  (progn
+    (defun config-lsp-toggle-ui-overlays (&optional should-enable)
+      (interactive (list (not (bound-and-true-p lsp-ui-mode))))
+      (cond
+       (should-enable
+        (lsp-ui-mode +1)
+        (eldoc-mode -1))
+       (t
+        (lsp-ui-mode -1)
+        (eldoc-mode +1))))
+
+    (defun config-lsp--configure-ui ()
+      (config-lsp-toggle-ui-overlays t)
+      (lsp-ui-flycheck-enable t)))
+  :init
+  (progn
+    (require 'lsp-ui-flycheck)
+    (with-eval-after-load 'lsp-mode
+      (define-key lsp-mode-map (kbd "C-c u") #'config-lsp-toggle-ui-overlays)))
   :config
   (progn
-    (general-setq lsp-ui-sideline-enable nil
+    (add-hook 'lsp-after-open-hook #'config-lsp--configure-ui)
+    (general-setq lsp-ui-sideline-enable t
+                  lsp-ui-sideline-show-code-actions nil
+                  lsp-ui-sideline-show-flycheck nil
                   lsp-ui-doc-enable nil)
 
     (define-key lsp-ui-mode-map (kbd "C-c C-c") #'lsp-goto-type-definition)
@@ -88,10 +115,6 @@
     (define-key lsp-ui-mode-map [remap evil-lookup] #'lsp-describe-thing-at-point)
     (define-key lsp-ui-mode-map [remap xref-find-definitions] #'lsp-ui-peek-find-definitions)
     (define-key lsp-ui-mode-map [remap xref-find-references] #'lsp-ui-peek-find-references)))
-
-(use-package lsp-ui-flycheck
-  :after lsp-mode
-  :hook (lsp-after-open . lsp-ui-flycheck-enable))
 
 (provide 'config-lsp)
 
